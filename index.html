@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#17223b" />
+    <title>Epubtyper | A quieter way to practice</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">e<span>/</span></div>
+          <div>
+            <p class="brand-name">epubtyper</p>
+            <p class="brand-tagline">read it. type it.</p>
+          </div>
+        </div>
+
+        <label class="upload-button" for="epub-input">
+          <span class="upload-icon" aria-hidden="true">+</span>
+          <span>Load an EPUB</span>
+          <input id="epub-input" type="file" accept=".epub,application/epub+zip" />
+        </label>
+        <p class="upload-hint">Your book stays in this browser.</p>
+
+        <div class="book-summary">
+          <p class="rail-label">Now reading</p>
+          <h2 id="book-title">The Quiet Hour</h2>
+          <p id="book-author">A sample reader</p>
+          <div class="book-progress-track" aria-hidden="true"><span id="book-progress-fill"></span></div>
+          <div class="book-progress-copy"><span id="book-progress-label">0% complete</span><span id="book-chapter-count">3 chapters</span></div>
+        </div>
+
+        <nav class="chapter-nav" aria-label="Chapters">
+          <p class="rail-label">Chapters</p>
+          <div id="chapter-list"></div>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Progress saves automatically</span>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="mode-switch" role="tablist" aria-label="App views">
+            <button class="mode-button is-active" data-view="practice" role="tab" aria-selected="true">Practice</button>
+            <button class="mode-button" data-view="stats" role="tab" aria-selected="false">Your stats</button>
+          </div>
+          <button class="text-button" id="reset-button" type="button">Reset chapter <span aria-hidden="true">↺</span></button>
+        </header>
+
+        <section class="view is-visible" id="practice-view" aria-labelledby="practice-heading">
+          <div class="intro-row">
+            <div>
+              <p class="eyebrow">A small daily ritual</p>
+              <h1 id="practice-heading">Make a page yours.</h1>
+              <p class="intro-copy">Type the passage below. The clock waits for your first key.</p>
+            </div>
+            <div class="live-metric" aria-live="polite">
+              <span class="metric-value" id="live-wpm">0</span>
+              <span class="metric-label">wpm</span>
+            </div>
+          </div>
+
+          <div class="session-card">
+            <div class="session-toolbar">
+              <div>
+                <p class="session-kicker" id="chapter-kicker">Chapter 01</p>
+                <h2 id="chapter-title">The first page</h2>
+              </div>
+              <div class="session-stats">
+                <div><strong id="accuracy-value">100%</strong><span>accuracy</span></div>
+                <div><strong id="time-value">00:00</strong><span>time</span></div>
+              </div>
+            </div>
+
+            <div class="typing-progress" aria-label="Typing progress">
+              <span id="typing-progress-fill"></span>
+            </div>
+            <div class="passage-frame" id="typing-surface" tabindex="0" role="textbox" aria-label="Typing passage">
+              <div class="passage" id="passage" aria-hidden="true"></div>
+              <p class="typing-help" id="typing-help">Click here and start typing</p>
+            </div>
+            <input class="mobile-capture" id="mobile-capture" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Type the passage" />
+            <div class="session-footer">
+              <span><kbd>esc</kbd> pause <span class="footer-divider">·</span> <kbd>backspace</kbd> go back</span>
+              <span id="character-count">0 / 0 characters</span>
+            </div>
+          </div>
+
+          <p class="normalization-note"><span aria-hidden="true">✦</span> Smart quotes, accents and non-keyboard symbols are quietly simplified so you can stay in the flow.</p>
+        </section>
+
+        <section class="view stats-view" id="stats-view" aria-labelledby="stats-heading" hidden>
+          <div class="intro-row">
+            <div>
+              <p class="eyebrow">The long view</p>
+              <h1 id="stats-heading">Your rhythm, collected.</h1>
+              <p class="intro-copy">A little evidence that the practice is adding up.</p>
+            </div>
+          </div>
+          <div class="stats-grid">
+            <article class="stat-card stat-card-accent"><span class="stat-card-label">Best speed</span><strong id="best-wpm">0</strong><span class="stat-card-unit">words per minute</span></article>
+            <article class="stat-card"><span class="stat-card-label">Average accuracy</span><strong id="average-accuracy">0%</strong><span class="stat-card-unit">across completed runs</span></article>
+            <article class="stat-card"><span class="stat-card-label">Sessions finished</span><strong id="sessions-finished">0</strong><span class="stat-card-unit">passages typed</span></article>
+            <article class="stat-card"><span class="stat-card-label">Characters typed</span><strong id="characters-typed">0</strong><span class="stat-card-unit">including retries</span></article>
+          </div>
+          <div class="history-card">
+            <div class="history-heading"><h2>Recent sessions</h2><span>stored locally</span></div>
+            <div class="history-list" id="history-list"><p class="empty-history">Finish a passage and it will appear here.</p></div>
+          </div>
+        </section>
+
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      </main>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
