@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'epubtyper-state-v1';
+const STORAGE_KEY = 'epubtyper-state-v2';
 const SAMPLE_BOOK = {
   id: 'sample-quiet-hour',
   title: 'The Quiet Hour',
@@ -26,6 +26,9 @@ const state = {
   currentChapter: 0,
   startedAt: null,
   timerId: null,
+  persistId: null,
+  characterElements: [],
+  currentCharacter: -1,
   toastId: null
 };
 
@@ -93,10 +96,17 @@ function loadState() {
 }
 
 function persist() {
+  clearTimeout(state.persistId);
+  state.persistId = null;
   const current = getBookState();
   current.currentChapter = state.currentChapter;
   state.bookProgress[state.book.id] = current;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ bookProgress: state.bookProgress, history: state.history }));
+}
+
+function persistSoon() {
+  clearTimeout(state.persistId);
+  state.persistId = window.setTimeout(persist, 300);
 }
 
 function getBookState() {
@@ -108,8 +118,11 @@ function getBookState() {
 function getChapterState(index = state.currentChapter) {
   const bookState = getBookState();
   if (!bookState.chapters[index]) {
-    bookState.chapters[index] = { position: 0, statuses: [], attempts: 0, correct: 0, elapsedMs: 0, completed: false };
+    bookState.chapters[index] = { position: 0, statuses: [], attempts: 0, correct: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0 };
   }
+  bookState.chapters[index].statuses = bookState.chapters[index].statuses || [];
+  bookState.chapters[index].events = bookState.chapters[index].events || [];
+  bookState.chapters[index].eventCount = bookState.chapters[index].eventCount || bookState.chapters[index].events.length;
   return bookState.chapters[index];
 }
 
@@ -141,17 +154,47 @@ function renderChapter() {
   const text = chapter.text;
   els.chapterKicker.textContent = `Chapter ${String(state.currentChapter + 1).padStart(2, '0')}`;
   els.chapterTitle.textContent = chapter.title;
-  els.passage.innerHTML = '';
+  els.passage.replaceChildren();
+  state.characterElements = [];
+  state.currentCharacter = -1;
+  const fragment = document.createDocumentFragment();
   [...text].forEach((character, index) => {
     const span = document.createElement('span');
-    span.textContent = character === ' ' ? '\u00a0' : character;
+    span.textContent = character;
     if (character === ' ') span.classList.add('is-space');
-    if (index < chapterState.position) span.classList.add(chapterState.statuses[index] === 'correct' ? 'is-correct' : 'is-incorrect');
-    if (index === chapterState.position && !chapterState.completed) span.classList.add('is-current');
-    els.passage.appendChild(span);
+    state.characterElements.push(span);
+    fragment.appendChild(span);
   });
+  els.passage.appendChild(fragment);
+  advanceToFairCharacter(chapterState);
+  for (let index = 0; index < chapterState.position; index += 1) setCharacterStatus(index, chapterState.statuses[index] || 'skipped');
+  moveCursor(chapterState.completed ? -1 : chapterState.position);
   els.typingHelp.classList.toggle('is-hidden', chapterState.position > 0 || chapterState.completed);
   updateSessionMetrics();
+}
+
+function setCharacterStatus(index, status) {
+  const element = state.characterElements[index];
+  if (!element) return;
+  element.classList.remove('is-current', 'is-correct', 'is-incorrect');
+  if (status === 'correct' || status === 'skipped') element.classList.add('is-correct');
+  if (status === 'incorrect') element.classList.add('is-incorrect');
+}
+
+function moveCursor(index) {
+  if (state.currentCharacter >= 0) state.characterElements[state.currentCharacter]?.classList.remove('is-current');
+  state.currentCharacter = index;
+  if (index >= 0) state.characterElements[index]?.classList.add('is-current');
+}
+
+function advanceToFairCharacter(chapterState) {
+  const text = state.book.chapters[state.currentChapter].text;
+  while (chapterState.position < text.length && !isFairCharacterAt(text, chapterState.position)) {
+    chapterState.statuses[chapterState.position] = 'skipped';
+    setCharacterStatus(chapterState.position, 'skipped');
+    chapterState.position += 1;
+  }
+  return chapterState.position;
 }
 
 function renderBookProgress() {
@@ -212,7 +255,10 @@ function handleMobileInput(event) {
 function typeCharacter(character) {
   const chapter = state.book.chapters[state.currentChapter];
   const chapterState = getChapterState();
-  if (chapterState.completed || chapterState.position >= chapter.text.length) return;
+  if (chapterState.completed) return;
+  const before = chapterState.position;
+  advanceToFairCharacter(chapterState);
+  if (chapterState.position >= chapter.text.length) return;
   if (!state.startedAt) {
     state.startedAt = Date.now();
     startTimer();
@@ -220,26 +266,44 @@ function typeCharacter(character) {
   const expected = chapter.text[chapterState.position];
   const isCorrect = character === expected;
   chapterState.statuses[chapterState.position] = isCorrect ? 'correct' : 'incorrect';
+  setCharacterStatus(chapterState.position, isCorrect ? 'correct' : 'incorrect');
+  chapterState.events = chapterState.events || [];
+  const event = { at: Date.now(), index: chapterState.position, key: character, expected, skipped: chapterState.position - before, correct: isCorrect };
+  if (chapterState.events.length < 5000) chapterState.events.push(event);
+  else chapterState.events[chapterState.eventCount % 5000] = event;
+  chapterState.eventCount += 1;
   chapterState.position += 1;
   chapterState.attempts += 1;
   if (isCorrect) chapterState.correct += 1;
-  if (chapterState.position === chapter.text.length) finishChapter();
-  renderChapter();
-  renderChapterList();
+  advanceToFairCharacter(chapterState);
+  moveCursor(chapterState.position >= chapter.text.length ? -1 : chapterState.position);
+  if (chapterState.position >= chapter.text.length) finishChapter();
+  els.typingHelp.classList.add('is-hidden');
+  updateSessionMetrics();
   renderBookProgress();
-  persist();
+  persistSoon();
 }
 
 function stepBack() {
   const chapterState = getChapterState();
   if (!chapterState.position || chapterState.completed) return;
-  chapterState.position -= 1;
-  if (chapterState.statuses[chapterState.position] === 'correct') chapterState.correct -= 1;
-  chapterState.statuses.pop();
+  let previous = chapterState.position - 1;
+  while (previous >= 0 && chapterState.statuses[previous] === 'skipped') {
+    chapterState.statuses[previous] = undefined;
+    setCharacterStatus(previous, undefined);
+    previous -= 1;
+  }
+  if (previous < 0) return;
+  if (chapterState.statuses[previous] === 'correct') chapterState.correct -= 1;
+  chapterState.statuses[previous] = undefined;
+  setCharacterStatus(previous, undefined);
+  chapterState.position = previous;
   chapterState.attempts = Math.max(0, chapterState.attempts - 1);
-  renderChapter();
+  moveCursor(chapterState.position);
+  els.typingHelp.classList.add('is-hidden');
+  updateSessionMetrics();
   renderBookProgress();
-  persist();
+  persistSoon();
 }
 
 function finishChapter() {
@@ -258,6 +322,7 @@ function finishChapter() {
   });
   state.history = state.history.slice(0, 20);
   persist();
+  renderChapterList();
   renderStats();
   showToast('Chapter complete. Nice work.');
 }
@@ -265,7 +330,7 @@ function finishChapter() {
 function resetChapter() {
   stopTimer();
   const bookState = getBookState();
-  bookState.chapters[state.currentChapter] = { position: 0, statuses: [], attempts: 0, correct: 0, elapsedMs: 0, completed: false };
+  bookState.chapters[state.currentChapter] = { position: 0, statuses: [], attempts: 0, correct: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0 };
   state.startedAt = null;
   persist();
   renderChapter();
@@ -366,7 +431,7 @@ async function parseEpub(file) {
       const contents = await section.load(book.load.bind(book));
       const body = contents.querySelector('body');
       const titleNode = contents.querySelector('h1, h2, h3, title');
-      const text = normalizeText(body?.textContent || contents.textContent || '');
+      const text = extractDisplayText(body || contents);
       const title = titleNode?.textContent.trim() || `Chapter ${chapters.length + 1}`;
       if (text && !isFrontMatter(title, text)) chapters.push({ title, text });
       section.unload();
@@ -386,6 +451,10 @@ function isFrontMatter(title, text) {
   return titleHint || (metadataHint && text.length < 2200);
 }
 
+function extractDisplayText(body) {
+  return body.textContent || '';
+}
+
 function normalizeText(value) {
   const replacements = { '“': '"', '”': '"', '‘': "'", '’': "'", '–': '-', '—': '-', '…': '...' };
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split('').map((character) => replacements[character] || character).join('').replace(/\s+/g, ' ').replace(/[^A-Za-z0-9 .,;:!?\-_'"()\[\]\/]/g, '').replace(/ {2,}/g, ' ').trim();
@@ -393,6 +462,14 @@ function normalizeText(value) {
 
 function isKeyboardCharacter(character) {
   return /^[ -~]$/.test(character);
+}
+
+function isFairCharacterAt(text, index) {
+  const character = text[index];
+  if (!isKeyboardCharacter(character)) return false;
+  if (character !== ' ') return true;
+  const previous = text[index - 1];
+  return !previous || !/[\s\u00a0]/.test(previous);
 }
 
 function formatTime(milliseconds) {

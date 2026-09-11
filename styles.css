@@ -81,7 +81,7 @@ h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--fo
 .typing-progress { height: 3px; margin: 32px 0 25px; background: var(--paper-deep); }
 .typing-progress span { display: block; width: 0; height: 100%; background: var(--coral); transition: width .16s ease; }
 .passage-frame { position: relative; min-height: 238px; padding: 2px 0 5px; cursor: text; }
-.passage { color: #a9adb4; font: 400 clamp(21px, 2.5vw, 30px)/1.75 var(--font-sans); letter-spacing: -.012em; }
+.passage { color: #a9adb4; font: 400 clamp(21px, 2.5vw, 30px)/1.75 var(--font-sans); letter-spacing: -.012em; white-space: pre-wrap; }
 .passage span { position: relative; }
 .passage span.is-current { color: var(--ink); }
 .passage span.is-current::after { position: absolute; bottom: 3px; left: 0; width: 2px; height: 1.05em; background: var(--coral); content: ''; animation: blink 1s steps(1) infinite; }
