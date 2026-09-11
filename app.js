@@ -88,7 +88,7 @@ function loadState() {
     state.bookProgress = saved.bookProgress || {};
     state.history = Array.isArray(saved.history) ? saved.history : [];
     const sampleProgress = state.bookProgress[SAMPLE_BOOK.id];
-    state.currentChapter = sampleProgress?.currentChapter || 0;
+    state.currentChapter = Math.max(0, Math.min(Number(sampleProgress?.currentChapter) || 0, SAMPLE_BOOK.chapters.length - 1));
   } catch {
     state.bookProgress = {};
     state.history = [];
@@ -101,7 +101,11 @@ function persist() {
   const current = getBookState();
   current.currentChapter = state.currentChapter;
   state.bookProgress[state.book.id] = current;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ bookProgress: state.bookProgress, history: state.history }));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ bookProgress: state.bookProgress, history: state.history }));
+  } catch (error) {
+    console.warn('Unable to save typing progress.', error);
+  }
 }
 
 function persistSoon() {
@@ -161,7 +165,6 @@ function renderChapter() {
   [...text].forEach((character, index) => {
     const span = document.createElement('span');
     span.textContent = character;
-    if (character === ' ') span.classList.add('is-space');
     state.characterElements.push(span);
     fragment.appendChild(span);
   });
@@ -258,7 +261,10 @@ function typeCharacter(character) {
   if (chapterState.completed) return;
   const before = chapterState.position;
   advanceToFairCharacter(chapterState);
-  if (chapterState.position >= chapter.text.length) return;
+  if (chapterState.position >= chapter.text.length) {
+    finishChapter();
+    return;
+  }
   if (!state.startedAt) {
     state.startedAt = Date.now();
     startTimer();
@@ -407,7 +413,7 @@ async function handleEpubUpload(event) {
     showToast('Opening your EPUB…');
     const book = await parseEpub(file);
     state.book = book;
-    state.currentChapter = state.bookProgress[book.id]?.currentChapter || 0;
+    state.currentChapter = Math.max(0, Math.min(Number(state.bookProgress[book.id]?.currentChapter) || 0, book.chapters.length - 1));
     state.startedAt = null;
     renderBook();
     showToast(`${book.chapters.length} chapters loaded.`);

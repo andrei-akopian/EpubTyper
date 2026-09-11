@@ -50,9 +50,8 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .sidebar-footer { display: flex; align-items: center; gap: 8px; margin-top: auto; color: #7e899e; font-size: 10px; line-height: 1.4; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 3px rgba(185,214,203,.12); }
 
-.main-content { position: relative; min-width: 0; padding: 0 clamp(28px, 6vw, 95px) 70px; background: var(--paper); overflow: hidden; }
-.main-content::before { position: absolute; top: -150px; right: -120px; width: 360px; height: 360px; border-radius: 50%; background: var(--coral-soft); content: ''; opacity: .7; }
-.topbar, .view { position: relative; z-index: 1; max-width: 1010px; margin: 0 auto; }
+.main-content { position: relative; min-width: 0; padding: 0 clamp(20px, 2.5vw, 40px) 70px; background: #f3f4f6; overflow: hidden; }
+.topbar, .view { position: relative; z-index: 1; max-width: none; margin: 0 auto; }
 .topbar { display: flex; align-items: center; justify-content: space-between; min-height: 93px; border-bottom: 1px solid var(--line); }
 .mode-switch { display: flex; gap: 26px; height: 93px; }
 .mode-button { position: relative; padding: 0; border: 0; color: #9299a8; background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
@@ -82,12 +81,9 @@ h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--fo
 .typing-progress span { display: block; width: 0; height: 100%; background: var(--coral); transition: width .16s ease; }
 .passage-frame { position: relative; min-height: 238px; padding: 2px 0 5px; cursor: text; }
 .passage { color: #a9adb4; font: 400 clamp(21px, 2.5vw, 30px)/1.75 var(--font-sans); letter-spacing: -.012em; white-space: pre-wrap; }
-.passage span { position: relative; }
-.passage span.is-current { color: var(--ink); }
-.passage span.is-current::after { position: absolute; bottom: 3px; left: 0; width: 2px; height: 1.05em; background: var(--coral); content: ''; animation: blink 1s steps(1) infinite; }
+.passage span.is-current { color: var(--ink); background: var(--coral-soft); }
 .passage span.is-correct { color: var(--ink); }
 .passage span.is-incorrect { color: var(--coral); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
-.passage span.is-space { display: inline-block; min-width: .3em; }
 .typing-help { position: absolute; right: 0; bottom: -14px; margin: 0; color: #a8adb5; font: 10px var(--font-mono); letter-spacing: .03em; transition: opacity .2s; }
 .typing-help.is-hidden { opacity: 0; }
 .mobile-capture { position: absolute; left: -10000px; width: 1px; height: 1px; opacity: 0; }
@@ -119,7 +115,6 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
 .toast { position: fixed; right: 28px; bottom: 24px; z-index: 5; padding: 11px 15px; background: var(--ink); color: #fffefa; opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .2s, transform .2s; font: 11px var(--font-mono); }
 .toast.is-visible { opacity: 1; transform: translateY(0); }
 
-@keyframes blink { 50% { opacity: 0; } }
 @media (max-width: 820px) {
   .app-shell { display: block; }
   .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; padding: 20px; }
@@ -159,8 +154,6 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
 }
 
 /* Keep the reading surface plain and familiar. */
-.main-content { background: #f3f4f6; }
-.main-content::before { display: none; }
 .session-card { box-shadow: 0 8px 24px rgba(18, 28, 51, .08); }
 .view { padding-top: 44px; }
 h1 { font-size: clamp(34px, 4vw, 50px); letter-spacing: -.03em; }
