@@ -6,7 +6,7 @@ Required features:
 - [x] load epubs
 - [x] web UI
 - [x] page with typing speed stats
-- [x] automatically clean or virtually replace spaces and non-qwerty keyboard characters to be skipped, spaces and newlines to be short. Take steps to prevent the user from needing to type non-latin characters. For now target is English with standard English keyboard.
+- [x] skip configurable whitespace and non-QWERTY source characters while preserving the original display text. For now target is English with a standard English keyboard.
 
 ## Sample implementation
 
@@ -21,3 +21,5 @@ python3 -m http.server 4173
 Then open `http://localhost:4173`.
 
 The prototype stores typing position, session history, and stats in `localStorage`. EPUB loading and spine handling use the pinned `epub.js@0.3.93` browser build from jsDelivr, with its required pinned `JSZip@3.10.1` dependency loaded first.
+
+The Settings view controls passage colors and whether Unicode, line breaks, tabs, and repeated spaces are skipped.

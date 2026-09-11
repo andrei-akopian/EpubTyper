@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#17223b" />
-    <title>Epubtyper | A quieter way to practice</title>
+    <title>Epubtyper</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -14,7 +14,7 @@
           <div class="brand-mark" aria-hidden="true">e<span>/</span></div>
           <div>
             <p class="brand-name">epubtyper</p>
-            <p class="brand-tagline">read it. type it.</p>
+            <p class="brand-tagline">EPUB typing</p>
           </div>
         </div>
 
@@ -23,8 +23,6 @@
           <span>Load an EPUB</span>
           <input id="epub-input" type="file" accept=".epub,application/epub+zip" />
         </label>
-        <p class="upload-hint">Your book stays in this browser.</p>
-
         <div class="book-summary">
           <p class="rail-label">Now reading</p>
           <h2 id="book-title">The Quiet Hour</h2>
@@ -48,7 +46,8 @@
         <header class="topbar">
           <div class="mode-switch" role="tablist" aria-label="App views">
             <button class="mode-button is-active" data-view="practice" role="tab" aria-selected="true">Practice</button>
-            <button class="mode-button" data-view="stats" role="tab" aria-selected="false">Your stats</button>
+            <button class="mode-button" data-view="stats" role="tab" aria-selected="false">Stats</button>
+            <button class="mode-button" data-view="settings" role="tab" aria-selected="false">Settings</button>
           </div>
           <button class="text-button" id="reset-button" type="button">Reset chapter <span aria-hidden="true">↺</span></button>
         </header>
@@ -56,9 +55,8 @@
         <section class="view is-visible" id="practice-view" aria-labelledby="practice-heading">
           <div class="intro-row">
             <div>
-              <p class="eyebrow">A small daily ritual</p>
-              <h1 id="practice-heading">Make a page yours.</h1>
-              <p class="intro-copy">Type the passage below. The clock waits for your first key.</p>
+              <p class="eyebrow">Typing</p>
+              <h1 id="practice-heading">Passage</h1>
             </div>
             <div class="live-metric" aria-live="polite">
               <span class="metric-value" id="live-wpm">0</span>
@@ -73,7 +71,8 @@
                 <h2 id="chapter-title">The first page</h2>
               </div>
               <div class="session-stats">
-                <div><strong id="accuracy-value">100%</strong><span>accuracy</span></div>
+                <div><strong id="accuracy-value">0%</strong><span>accuracy</span></div>
+                <div><strong id="live-raw-wpm">0</strong><span>raw wpm</span></div>
                 <div><strong id="time-value">00:00</strong><span>time</span></div>
               </div>
             </div>
@@ -92,15 +91,13 @@
             </div>
           </div>
 
-          <p class="normalization-note"><span aria-hidden="true">✦</span> Smart quotes, accents and non-keyboard symbols are quietly simplified so you can stay in the flow.</p>
         </section>
 
         <section class="view stats-view" id="stats-view" aria-labelledby="stats-heading" hidden>
           <div class="intro-row">
             <div>
-              <p class="eyebrow">The long view</p>
-              <h1 id="stats-heading">Your rhythm, collected.</h1>
-              <p class="intro-copy">A little evidence that the practice is adding up.</p>
+              <p class="eyebrow">Results</p>
+              <h1 id="stats-heading">Statistics</h1>
             </div>
           </div>
           <div class="stats-grid">
@@ -113,6 +110,31 @@
             <div class="history-heading"><h2>Recent sessions</h2><span>stored locally</span></div>
             <div class="history-list" id="history-list"><p class="empty-history">Finish a passage and it will appear here.</p></div>
           </div>
+        </section>
+
+        <section class="view settings-view" id="settings-view" aria-labelledby="settings-heading" hidden>
+          <div class="intro-row">
+            <div>
+              <p class="eyebrow">Configuration</p>
+              <h1 id="settings-heading">Settings</h1>
+            </div>
+          </div>
+          <div class="settings-grid">
+            <section class="settings-card" aria-labelledby="colors-heading">
+              <h2 id="colors-heading">Colors</h2>
+              <label class="setting-row" for="remaining-color"><span>Remaining text</span><input id="remaining-color" data-setting="remainingColor" type="color" /></label>
+              <label class="setting-row" for="typed-color"><span>Typed text</span><input id="typed-color" data-setting="typedColor" type="color" /></label>
+              <label class="setting-row" for="error-color"><span>Incorrect text</span><input id="error-color" data-setting="errorColor" type="color" /></label>
+              <label class="setting-row" for="current-background"><span>Current character</span><input id="current-background" data-setting="currentBackground" type="color" /></label>
+            </section>
+            <section class="settings-card" aria-labelledby="skip-heading">
+              <h2 id="skip-heading">Character skipping</h2>
+              <label class="check-row" for="skip-unicode"><input id="skip-unicode" data-setting="skipUnicode" type="checkbox" /><span>Skip non-QWERTY characters</span></label>
+              <label class="check-row" for="skip-whitespace"><input id="skip-whitespace" data-setting="skipWhitespace" type="checkbox" /><span>Skip line breaks and tabs</span></label>
+              <label class="check-row" for="skip-repeated-spaces"><input id="skip-repeated-spaces" data-setting="skipRepeatedSpaces" type="checkbox" /><span>Skip repeated spaces</span></label>
+            </section>
+          </div>
+          <button class="settings-reset" id="reset-settings" type="button">Reset settings</button>
         </section>
 
         <div class="toast" id="toast" role="status" aria-live="polite"></div>

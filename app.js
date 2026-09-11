@@ -1,4 +1,13 @@
-const STORAGE_KEY = 'epubtyper-state-v2';
+const STORAGE_KEY = 'epubtyper-state-v3';
+const DEFAULT_SETTINGS = {
+  remainingColor: '#a9adb4',
+  typedColor: '#17223b',
+  errorColor: '#e9785d',
+  currentBackground: '#f6d8cc',
+  skipUnicode: true,
+  skipWhitespace: true,
+  skipRepeatedSpaces: true
+};
 const SAMPLE_BOOK = {
   id: 'sample-quiet-hour',
   title: 'The Quiet Hour',
@@ -23,6 +32,7 @@ const state = {
   book: SAMPLE_BOOK,
   bookProgress: {},
   history: [],
+  settings: { ...DEFAULT_SETTINGS },
   currentChapter: 0,
   startedAt: null,
   timerId: null,
@@ -53,20 +63,24 @@ document.addEventListener('DOMContentLoaded', () => {
     accuracyValue: document.querySelector('#accuracy-value'),
     timeValue: document.querySelector('#time-value'),
     liveWpm: document.querySelector('#live-wpm'),
+    liveRawWpm: document.querySelector('#live-raw-wpm'),
     toast: document.querySelector('#toast'),
     epubInput: document.querySelector('#epub-input'),
     resetButton: document.querySelector('#reset-button'),
     practiceView: document.querySelector('#practice-view'),
     statsView: document.querySelector('#stats-view'),
+    settingsView: document.querySelector('#settings-view'),
     bestWpm: document.querySelector('#best-wpm'),
     averageAccuracy: document.querySelector('#average-accuracy'),
     sessionsFinished: document.querySelector('#sessions-finished'),
     charactersTyped: document.querySelector('#characters-typed'),
-    historyList: document.querySelector('#history-list')
+    historyList: document.querySelector('#history-list'),
+    resetSettings: document.querySelector('#reset-settings')
   });
 
   loadState();
   bindEvents();
+  applySettings();
   renderBook();
   renderStats();
 });
@@ -74,11 +88,15 @@ document.addEventListener('DOMContentLoaded', () => {
 function bindEvents() {
   els.epubInput.addEventListener('change', handleEpubUpload);
   els.resetButton.addEventListener('click', resetChapter);
+  els.resetSettings.addEventListener('click', resetSettings);
   els.typingSurface.addEventListener('click', focusTyping);
   els.mobileCapture.addEventListener('input', handleMobileInput);
   document.addEventListener('keydown', handleKeydown);
   document.querySelectorAll('.mode-button').forEach((button) => {
     button.addEventListener('click', () => setView(button.dataset.view));
+  });
+  document.querySelectorAll('[data-setting]').forEach((input) => {
+    input.addEventListener(input.type === 'color' ? 'input' : 'change', handleSettingChange);
   });
 }
 
@@ -87,6 +105,7 @@ function loadState() {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     state.bookProgress = saved.bookProgress || {};
     state.history = Array.isArray(saved.history) ? saved.history : [];
+    state.settings = { ...DEFAULT_SETTINGS, ...(saved.settings || {}) };
     const sampleProgress = state.bookProgress[SAMPLE_BOOK.id];
     state.currentChapter = Math.max(0, Math.min(Number(sampleProgress?.currentChapter) || 0, SAMPLE_BOOK.chapters.length - 1));
   } catch {
@@ -102,7 +121,7 @@ function persist() {
   current.currentChapter = state.currentChapter;
   state.bookProgress[state.book.id] = current;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ bookProgress: state.bookProgress, history: state.history }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ bookProgress: state.bookProgress, history: state.history, settings: state.settings }));
   } catch (error) {
     console.warn('Unable to save typing progress.', error);
   }
@@ -111,6 +130,50 @@ function persist() {
 function persistSoon() {
   clearTimeout(state.persistId);
   state.persistId = window.setTimeout(persist, 300);
+}
+
+function applySettings() {
+  const root = document.documentElement;
+  root.style.setProperty('--remaining-color', state.settings.remainingColor);
+  root.style.setProperty('--typed-color', state.settings.typedColor);
+  root.style.setProperty('--error-color', state.settings.errorColor);
+  root.style.setProperty('--current-background', state.settings.currentBackground);
+  document.querySelectorAll('[data-setting]').forEach((input) => {
+    const value = state.settings[input.dataset.setting];
+    if (input.type === 'checkbox') input.checked = Boolean(value);
+    else input.value = value;
+  });
+}
+
+function handleSettingChange(event) {
+  const input = event.currentTarget;
+  state.settings[input.dataset.setting] = input.type === 'checkbox' ? input.checked : input.value;
+  applySettings();
+  if (input.type === 'checkbox') refreshTypingPosition();
+  persist();
+}
+
+function resetSettings() {
+  state.settings = { ...DEFAULT_SETTINGS };
+  applySettings();
+  refreshTypingPosition();
+  persist();
+}
+
+function refreshTypingPosition() {
+  const chapterState = getChapterState();
+  if (chapterState.completed) {
+    renderChapter();
+    return;
+  }
+  let lastTyped = -1;
+  chapterState.statuses.forEach((status, index) => {
+    if (status === 'correct' || status === 'incorrect') lastTyped = index;
+    if (status === 'skipped') chapterState.statuses[index] = undefined;
+  });
+  chapterState.position = lastTyped + 1;
+  renderChapter();
+  renderBookProgress();
 }
 
 function getBookState() {
@@ -122,11 +185,13 @@ function getBookState() {
 function getChapterState(index = state.currentChapter) {
   const bookState = getBookState();
   if (!bookState.chapters[index]) {
-    bookState.chapters[index] = { position: 0, statuses: [], attempts: 0, correct: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0 };
+    bookState.chapters[index] = { position: 0, statuses: [], attempts: 0, correct: 0, correctEvents: 0, incorrectEvents: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0 };
   }
   bookState.chapters[index].statuses = bookState.chapters[index].statuses || [];
   bookState.chapters[index].events = bookState.chapters[index].events || [];
   bookState.chapters[index].eventCount = bookState.chapters[index].eventCount || bookState.chapters[index].events.length;
+  bookState.chapters[index].correctEvents = bookState.chapters[index].correctEvents || 0;
+  bookState.chapters[index].incorrectEvents = bookState.chapters[index].incorrectEvents || 0;
   return bookState.chapters[index];
 }
 
@@ -241,16 +306,17 @@ function handleKeydown(event) {
     stepBack();
     return;
   }
-  if (event.key.length !== 1 || event.isComposing || !isKeyboardCharacter(event.key)) return;
+  const character = characterFromKey(event.key);
+  if (!character || event.isComposing || !isInputCharacter(character)) return;
   event.preventDefault();
-  typeCharacter(event.key);
+  typeCharacter(character);
 }
 
 function handleMobileInput(event) {
   const value = event.target.value;
   if (!value) return;
   [...value].forEach((character) => {
-    if (isKeyboardCharacter(character)) typeCharacter(character);
+    if (isInputCharacter(character)) typeCharacter(character);
   });
   event.target.value = '';
 }
@@ -273,6 +339,8 @@ function typeCharacter(character) {
   const isCorrect = character === expected;
   chapterState.statuses[chapterState.position] = isCorrect ? 'correct' : 'incorrect';
   setCharacterStatus(chapterState.position, isCorrect ? 'correct' : 'incorrect');
+  if (isCorrect) chapterState.correctEvents += 1;
+  else chapterState.incorrectEvents += 1;
   chapterState.events = chapterState.events || [];
   const event = { at: Date.now(), index: chapterState.position, key: character, expected, skipped: chapterState.position - before, correct: isCorrect };
   if (chapterState.events.length < 5000) chapterState.events.push(event);
@@ -304,7 +372,6 @@ function stepBack() {
   chapterState.statuses[previous] = undefined;
   setCharacterStatus(previous, undefined);
   chapterState.position = previous;
-  chapterState.attempts = Math.max(0, chapterState.attempts - 1);
   moveCursor(chapterState.position);
   els.typingHelp.classList.add('is-hidden');
   updateSessionMetrics();
@@ -316,13 +383,13 @@ function finishChapter() {
   const chapterState = getChapterState();
   chapterState.completed = true;
   stopTimer();
-  const minutes = Math.max(chapterState.elapsedMs / 60000, 1 / 60000);
-  const wpm = Math.round((chapterState.correct / 5) / minutes);
+  const metrics = getTypingMetrics(chapterState);
   state.history.unshift({
     bookTitle: state.book.title,
     chapterTitle: state.book.chapters[state.currentChapter].title,
-    wpm,
-    accuracy: chapterState.attempts ? Math.round((chapterState.correct / chapterState.attempts) * 100) : 100,
+    wpm: metrics.wpm,
+    rawWpm: metrics.rawWpm,
+    accuracy: metrics.accuracy,
     characters: chapterState.attempts,
     date: new Date().toISOString()
   });
@@ -330,13 +397,13 @@ function finishChapter() {
   persist();
   renderChapterList();
   renderStats();
-  showToast('Chapter complete. Nice work.');
+  showToast('Chapter complete.');
 }
 
 function resetChapter() {
   stopTimer();
   const bookState = getBookState();
-  bookState.chapters[state.currentChapter] = { position: 0, statuses: [], attempts: 0, correct: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0 };
+  bookState.chapters[state.currentChapter] = { position: 0, statuses: [], attempts: 0, correct: 0, correctEvents: 0, incorrectEvents: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0 };
   state.startedAt = null;
   persist();
   renderChapter();
@@ -365,24 +432,35 @@ function stopTimer() {
 function updateSessionMetrics() {
   const chapter = state.book.chapters[state.currentChapter];
   const chapterState = getChapterState();
-  const elapsedMs = chapterState.elapsedMs + (state.startedAt ? Date.now() - state.startedAt : 0);
-  const minutes = Math.max(elapsedMs / 60000, 1 / 60000);
-  const wpm = Math.round((chapterState.correct / 5) / minutes) || 0;
-  const accuracy = chapterState.attempts ? Math.round((chapterState.correct / chapterState.attempts) * 100) : 100;
+  const metrics = getTypingMetrics(chapterState);
   const percent = chapter.text.length ? (chapterState.position / chapter.text.length) * 100 : 0;
-  els.liveWpm.textContent = wpm;
-  els.accuracyValue.textContent = `${accuracy}%`;
-  els.timeValue.textContent = formatTime(elapsedMs);
+  els.liveWpm.textContent = metrics.wpm;
+  els.liveRawWpm.textContent = metrics.rawWpm;
+  els.accuracyValue.textContent = `${metrics.accuracy}%`;
+  els.timeValue.textContent = formatTime(metrics.elapsedMs);
   els.characterCount.textContent = `${chapterState.position} / ${chapter.text.length} characters`;
   els.typingProgressFill.style.width = `${percent}%`;
 }
 
+function getTypingMetrics(chapterState) {
+  const elapsedMs = chapterState.elapsedMs + (state.startedAt ? Date.now() - state.startedAt : 0);
+  const durationMinutes = elapsedMs / 60000;
+  const wpm = durationMinutes > 0 ? Math.round((chapterState.correct / 5) / durationMinutes) : 0;
+  const rawWpm = durationMinutes > 0 ? Math.round((chapterState.attempts / 5) / durationMinutes) : 0;
+  const totalEvents = chapterState.correctEvents + chapterState.incorrectEvents;
+  const accuracy = totalEvents ? Math.round((chapterState.correctEvents / totalEvents) * 100) : 0;
+  return { elapsedMs, wpm, rawWpm, accuracy };
+}
+
 function setView(view) {
   const practice = view === 'practice';
+  const stats = view === 'stats';
   els.practiceView.hidden = !practice;
-  els.statsView.hidden = practice;
+  els.statsView.hidden = !stats;
+  els.settingsView.hidden = view !== 'settings';
   els.practiceView.classList.toggle('is-visible', practice);
-  els.statsView.classList.toggle('is-visible', !practice);
+  els.statsView.classList.toggle('is-visible', stats);
+  els.settingsView.classList.toggle('is-visible', view === 'settings');
   document.querySelectorAll('.mode-button').forEach((button) => {
     const active = button.dataset.view === view;
     button.classList.toggle('is-active', active);
@@ -403,7 +481,7 @@ function renderStats() {
   els.averageAccuracy.textContent = `${average}%`;
   els.sessionsFinished.textContent = completed.length;
   els.charactersTyped.textContent = completed.reduce((sum, item) => sum + item.characters, 0).toLocaleString();
-  els.historyList.innerHTML = completed.length ? completed.map((item) => `<div class="history-row"><div><strong>${escapeHtml(item.chapterTitle)}</strong><small>${escapeHtml(item.bookTitle)} · ${formatDate(item.date)}</small></div><span class="history-value">${item.wpm} wpm</span><span class="history-value">${item.accuracy}% acc.</span><span class="history-value">${item.characters} chars</span></div>`).join('') : '<p class="empty-history">Finish a passage and it will appear here.</p>';
+  els.historyList.innerHTML = completed.length ? completed.map((item) => `<div class="history-row"><div><strong>${escapeHtml(item.chapterTitle)}</strong><small>${escapeHtml(item.bookTitle)} · ${formatDate(item.date)}</small></div><span class="history-value">${item.wpm} wpm</span><span class="history-value">${item.rawWpm ?? item.wpm} raw</span><span class="history-value">${item.accuracy}% acc.</span></div>`).join('') : '<p class="empty-history">Finish a passage and it will appear here.</p>';
 }
 
 async function handleEpubUpload(event) {
@@ -470,12 +548,26 @@ function isKeyboardCharacter(character) {
   return /^[ -~]$/.test(character);
 }
 
+function characterFromKey(key) {
+  if (key === 'Enter') return '\n';
+  if (key === 'Tab') return '\t';
+  return key.length === 1 ? key : '';
+}
+
+function isInputCharacter(character) {
+  if (!character || character === '\r') return false;
+  if (isKeyboardCharacter(character)) return true;
+  if (/[\n\t]/.test(character)) return !state.settings.skipWhitespace;
+  return !state.settings.skipUnicode;
+}
+
 function isFairCharacterAt(text, index) {
   const character = text[index];
-  if (!isKeyboardCharacter(character)) return false;
+  if (character === '\n' || character === '\t' || character === '\r') return !state.settings.skipWhitespace;
+  if (!isKeyboardCharacter(character)) return !state.settings.skipUnicode;
   if (character !== ' ') return true;
   const previous = text[index - 1];
-  return !previous || !/[\s\u00a0]/.test(previous);
+  return !state.settings.skipRepeatedSpaces || !previous || !/[\s\u00a0]/.test(previous);
 }
 
 function formatTime(milliseconds) {
