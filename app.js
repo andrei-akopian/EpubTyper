@@ -355,87 +355,29 @@ async function handleEpubUpload(event) {
 }
 
 async function parseEpub(file) {
-  if (!('DecompressionStream' in window)) throw new Error('This browser does not support EPUB compression.');
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const entries = readZipEntries(bytes);
-  const container = parseXml(await readZipEntry(entries, bytes, 'META-INF/container.xml'));
-  const rootfile = firstByLocalName(container, 'rootfile');
-  if (!rootfile) throw new Error('EPUB has no rootfile.');
-  const opfPath = rootfile.getAttribute('full-path');
-  const opf = parseXml(await readZipEntry(entries, bytes, opfPath));
-  const opfDirectory = opfPath.slice(0, opfPath.lastIndexOf('/') + 1);
-  const manifestNode = firstByLocalName(opf, 'manifest');
-  const spineNode = firstByLocalName(opf, 'spine');
-  const manifest = new Map([...manifestNode.getElementsByTagNameNS('*', 'item')].map((item) => [item.getAttribute('id'), item]));
+  if (typeof ePub !== 'function') throw new Error('epub.js did not load.');
+  const book = ePub(await file.arrayBuffer());
+  await book.ready;
+  const metadata = await book.loaded.metadata;
   const chapters = [];
-  for (const itemref of spineNode.getElementsByTagNameNS('*', 'itemref')) {
-    if (itemref.getAttribute('linear') === 'no') continue;
-    const item = manifest.get(itemref.getAttribute('idref'));
-    if (!item || !/html|xhtml/i.test(item.getAttribute('media-type') || '')) continue;
-    if ((item.getAttribute('properties') || '').split(/\s+/).includes('nav')) continue;
-    const path = normalizePath(opfDirectory + item.getAttribute('href').split('#')[0]);
-    const source = await readZipEntry(entries, bytes, path);
-    const document = parseXml(source);
-    const body = firstByLocalName(document, 'body');
-    const titleNode = firstByLocalName(document, 'h1') || firstByLocalName(document, 'h2') || firstByLocalName(document, 'h3') || firstByLocalName(document, 'title');
-    const text = normalizeText(body?.textContent || document.documentElement.textContent || '');
-    const title = titleNode?.textContent.trim() || `Chapter ${chapters.length + 1}`;
-    if (text && !isFrontMatter(title, text)) chapters.push({ title, text });
+  try {
+    for (const section of book.spine.spineItems) {
+      if (!section.linear || (section.properties || []).includes('nav')) continue;
+      const contents = await section.load(book.load.bind(book));
+      const body = contents.querySelector('body');
+      const titleNode = contents.querySelector('h1, h2, h3, title');
+      const text = normalizeText(body?.textContent || contents.textContent || '');
+      const title = titleNode?.textContent.trim() || `Chapter ${chapters.length + 1}`;
+      if (text && !isFrontMatter(title, text)) chapters.push({ title, text });
+      section.unload();
+    }
+  } finally {
+    book.destroy();
   }
   if (!chapters.length) throw new Error('No readable chapters found.');
-  const title = firstByLocalName(opf, 'title')?.textContent.trim() || file.name.replace(/\.epub$/i, '');
-  const author = firstByLocalName(opf, 'creator')?.textContent.trim() || 'Imported EPUB';
+  const title = metadata?.title || file.name.replace(/\.epub$/i, '');
+  const author = metadata?.creator || 'Imported EPUB';
   return { id: `epub-${file.name}-${file.size}-${file.lastModified}`, title, author, chapters };
-}
-
-function readZipEntries(bytes) {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  let eocd = -1;
-  for (let index = bytes.length - 22; index >= Math.max(0, bytes.length - 65557); index -= 1) {
-    if (view.getUint32(index, true) === 0x06054b50) { eocd = index; break; }
-  }
-  if (eocd < 0) throw new Error('Not a ZIP archive.');
-  const count = view.getUint16(eocd + 10, true);
-  const directorySize = view.getUint32(eocd + 12, true);
-  const directoryOffset = view.getUint32(eocd + 16, true);
-  const entries = new Map();
-  let offset = directoryOffset;
-  for (let i = 0; i < count; i += 1) {
-    if (view.getUint32(offset, true) !== 0x02014b50) throw new Error('Invalid ZIP directory.');
-    const nameLength = view.getUint16(offset + 28, true);
-    const extraLength = view.getUint16(offset + 30, true);
-    const commentLength = view.getUint16(offset + 32, true);
-    const name = new TextDecoder().decode(bytes.slice(offset + 46, offset + 46 + nameLength));
-    entries.set(normalizePath(name), { method: view.getUint16(offset + 10, true), compressedSize: view.getUint32(offset + 20, true), size: view.getUint32(offset + 24, true), localOffset: view.getUint32(offset + 42, true) });
-    offset += 46 + nameLength + extraLength + commentLength;
-  }
-  if (!directorySize || !entries.size) throw new Error('Empty ZIP archive.');
-  return entries;
-}
-
-async function readZipEntry(entries, bytes, path) {
-  const entry = entries.get(normalizePath(path));
-  if (!entry) throw new Error(`Missing EPUB entry: ${path}`);
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const local = entry.localOffset;
-  const nameLength = view.getUint16(local + 26, true);
-  const extraLength = view.getUint16(local + 28, true);
-  const start = local + 30 + nameLength + extraLength;
-  const compressed = bytes.slice(start, start + entry.compressedSize);
-  if (entry.method === 0) return new TextDecoder().decode(compressed);
-  if (entry.method !== 8) throw new Error('Unsupported ZIP compression.');
-  const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-  return new TextDecoder().decode(new Uint8Array(await new Response(stream).arrayBuffer()));
-}
-
-function parseXml(source) {
-  const document = new DOMParser().parseFromString(source, 'application/xml');
-  if (document.querySelector('parsererror')) throw new Error('Invalid EPUB XML.');
-  return document;
-}
-
-function firstByLocalName(document, name) {
-  return document.getElementsByTagNameNS('*', name)[0] || null;
 }
 
 function isFrontMatter(title, text) {
@@ -447,16 +389,6 @@ function isFrontMatter(title, text) {
 function normalizeText(value) {
   const replacements = { '“': '"', '”': '"', '‘': "'", '’': "'", '–': '-', '—': '-', '…': '...' };
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split('').map((character) => replacements[character] || character).join('').replace(/\s+/g, ' ').replace(/[^A-Za-z0-9 .,;:!?\-_'"()\[\]\/]/g, '').replace(/ {2,}/g, ' ').trim();
-}
-
-function normalizePath(path) {
-  const parts = [];
-  path.split('/').forEach((part) => {
-    if (!part || part === '.') return;
-    if (part === '..') parts.pop();
-    else parts.push(part);
-  });
-  return parts.join('/');
 }
 
 function isKeyboardCharacter(character) {

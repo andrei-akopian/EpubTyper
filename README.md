@@ -10,7 +10,7 @@ Required features:
 
 ## Sample implementation
 
-This repository is a dependency-free client-side prototype. It starts with a short sample book and accepts standard `.epub` files through the **Load an EPUB** control. EPUB files are opened locally in the browser; no book content is uploaded.
+This repository is a client-side prototype with no build step. It starts with a short sample book and accepts standard `.epub` files through the **Load an EPUB** control. EPUB files are opened locally in the browser; no book content is uploaded.
 
 Run it from the project directory with any static file server, for example:
 
@@ -20,4 +20,4 @@ python3 -m http.server 4173
 
 Then open `http://localhost:4173`.
 
-The prototype stores typing position, session history, and stats in `localStorage`. It uses the browser's ZIP and XML APIs directly instead of bundling epub.js so the sample stays small and easy to inspect.
+The prototype stores typing position, session history, and stats in `localStorage`. EPUB loading and spine handling use the pinned `epub.js@0.3.93` browser build from jsDelivr, with its required pinned `JSZip@3.10.1` dependency loaded first.
