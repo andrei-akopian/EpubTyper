@@ -147,7 +147,7 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
   .sidebar-practice-heading { grid-column: 1 / -1; }
   .practice-library { grid-column: 1 / -1; }
   .sidebar-reset { grid-column: 1; margin-top: 0; }
-  .sidebar-footer { display: none; }
+  .sidebar-footer { display: flex; }
   .book-list { max-height: 260px; }
   .chapter-button { min-width: 0; padding: 7px 10px; }
   .chapter-button.is-active { border-color: var(--coral); }
@@ -169,6 +169,3 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
-
-h1 { font-size: clamp(34px, 4vw, 50px); letter-spacing: -.03em; }
-.passage { font-size: clamp(19px, 2.1vw, 26px); line-height: 1.65; letter-spacing: 0; }

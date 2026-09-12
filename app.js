@@ -7,17 +7,17 @@ const COMMON_CHARSET = [
 ].join('');
 const CHARSET_PRESETS = {
   qwerty: COMMON_CHARSET,
-  azerty: `${COMMON_CHARSET}àâäçéèêëîïôöùûüÿÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸ`,
+  azerty: `${COMMON_CHARSET}àâäæçéèêëîïôœöùûüÿÀÂÄÆÇÉÈÊËÎÏÔŒÖÙÛÜŸ`,
   qwertz: `${COMMON_CHARSET}äöüßÄÖÜẞ`,
   spanish: `${COMMON_CHARSET}áéíóúüñÁÉÍÓÚÜÑ¿¡`,
   nordic: `${COMMON_CHARSET}åäöøæÅÄÖØÆ`,
   russian: `${COMMON_CHARSET}йцукенгшщзхъфывапролджэячсмитьбюёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ`,
   ukrainian: `${COMMON_CHARSET}йцукенгшщзхїґфівапролджєячсмитьбюЙЦУКЕНГШЩЗХЇҐФІВАПРОЛДЖЄЯЧСМИТЬБЮ`,
   belarusian: `${COMMON_CHARSET}йцукенгшўзхъфывапролджэячсміцьбюЙЦУКЕНГШЎЗХЪФЫВАПРОЛДЖЭЯЧСМІЦЬБЮ`,
-  bulgarian: `${COMMON_CHARSET}йцукенгшщзхъфывапролджьтюЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЬТЮ`,
+  bulgarian: `${COMMON_CHARSET}абвгдежзийклмнопрстуфхцчшщъьюяАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЬЮЯ`,
   polish: `${COMMON_CHARSET}ąćęłńóśźżĄĆĘŁŃÓŚŹŻ`,
   czechSlovak: `${COMMON_CHARSET}áäčďéěíĺľňóôŕřšťúůýžÁÄČĎÉĚÍĹĽŇÓÔŔŘŠŤÚŮÝŽ`,
-  serbian: `${COMMON_CHARSET}љњђћџјзчшђЈЉЊЂЋЏЗЧШ`
+  serbian: `${COMMON_CHARSET}абвгдђежзијклљмнњопрстћуфхцчџшАБВГДЂЕЖЗИЈКЛЉМНЊОПРСТЋУФХЦЧЏШ`
 };
 const DEFAULT_SETTINGS = {
   remainingColor: '#a9adb4',
@@ -122,6 +122,7 @@ function bindEvents() {
   });
   els.charsetPreset.addEventListener('change', handleCharsetPresetChange);
   els.charsetInput.addEventListener('input', handleCharsetInput);
+  window.addEventListener('pagehide', persist);
 }
 
 function loadState() {
@@ -286,14 +287,14 @@ function renderBookList() {
 function renderChapter() {
   const chapter = state.book.chapters[state.currentChapter];
   const chapterState = getChapterState();
-  const text = chapter.text;
+  const characters = getChapterCharacters();
   els.chapterKicker.textContent = `Chapter ${String(state.currentChapter + 1).padStart(2, '0')}`;
   els.chapterTitle.textContent = chapter.title;
   els.passage.replaceChildren();
   state.characterElements = [];
   state.currentCharacter = -1;
   const fragment = document.createDocumentFragment();
-  [...text].forEach((character, index) => {
+  characters.forEach((character) => {
     const span = document.createElement('span');
     span.textContent = character;
     state.characterElements.push(span);
@@ -304,6 +305,7 @@ function renderChapter() {
   for (let index = 0; index < chapterState.position; index += 1) setCharacterStatus(index, chapterState.statuses[index] || 'skipped');
   moveCursor(chapterState.completed ? -1 : chapterState.position);
   els.typingHelp.classList.toggle('is-hidden', chapterState.position > 0 || chapterState.completed);
+  if (chapterState.position >= characters.length && !chapterState.completed) finishChapter();
   updateSessionMetrics();
 }
 
@@ -322,7 +324,7 @@ function moveCursor(index) {
 }
 
 function advanceToFairCharacter(chapterState) {
-  const text = state.book.chapters[state.currentChapter].text;
+  const text = getChapterCharacters();
   while (chapterState.position < text.length && !isFairCharacterAt(text, chapterState.position)) {
     chapterState.statuses[chapterState.position] = 'skipped';
     setCharacterStatus(chapterState.position, 'skipped');
@@ -337,8 +339,11 @@ function renderBookProgress() {
 
 function updateBookProgress(book, element) {
   if (!element) return;
-  const total = book.chapters.reduce((sum, chapter) => sum + chapter.text.length, 0);
-  const completed = book.chapters.reduce((sum, chapter, index) => sum + Math.min(state.bookProgress[book.id]?.chapters?.[index]?.position || 0, chapter.text.length), 0);
+  const total = book.chapters.reduce((sum, chapter) => sum + [...chapter.text].length, 0);
+  const completed = book.chapters.reduce((sum, chapter, index) => {
+    const length = [...chapter.text].length;
+    return sum + Math.min(state.bookProgress[book.id]?.chapters?.[index]?.position || 0, length);
+  }, 0);
   element.textContent = `${total ? Math.round((completed / total) * 100) : 0}%`;
 }
 
@@ -409,12 +414,12 @@ function handleMobileInput(event) {
 }
 
 function typeCharacter(character) {
-  const chapter = state.book.chapters[state.currentChapter];
+  const characters = getChapterCharacters();
   const chapterState = getChapterState();
   if (chapterState.completed) return;
   const before = chapterState.position;
   advanceToFairCharacter(chapterState);
-  if (chapterState.position >= chapter.text.length) {
+  if (chapterState.position >= characters.length) {
     finishChapter();
     return;
   }
@@ -422,7 +427,7 @@ function typeCharacter(character) {
     state.startedAt = Date.now();
     startTimer();
   }
-  const expected = chapter.text[chapterState.position];
+  const expected = characters[chapterState.position];
   const isCorrect = character === expected;
   chapterState.statuses[chapterState.position] = isCorrect ? 'correct' : 'incorrect';
   setCharacterStatus(chapterState.position, isCorrect ? 'correct' : 'incorrect');
@@ -437,8 +442,8 @@ function typeCharacter(character) {
   chapterState.attempts += 1;
   if (isCorrect) chapterState.correct += 1;
   advanceToFairCharacter(chapterState);
-  moveCursor(chapterState.position >= chapter.text.length ? -1 : chapterState.position);
-  if (chapterState.position >= chapter.text.length) finishChapter();
+  moveCursor(chapterState.position >= characters.length ? -1 : chapterState.position);
+  if (chapterState.position >= characters.length) finishChapter();
   els.typingHelp.classList.add('is-hidden');
   updateSessionMetrics();
   renderBookProgress();
@@ -517,15 +522,15 @@ function stopTimer() {
 }
 
 function updateSessionMetrics() {
-  const chapter = state.book.chapters[state.currentChapter];
+  const characters = getChapterCharacters();
   const chapterState = getChapterState();
   const metrics = getTypingMetrics(chapterState);
-  const percent = chapter.text.length ? (chapterState.position / chapter.text.length) * 100 : 0;
+  const percent = characters.length ? (chapterState.position / characters.length) * 100 : 0;
   els.liveWpm.textContent = metrics.wpm;
   els.liveRawWpm.textContent = metrics.rawWpm;
   els.accuracyValue.textContent = `${metrics.accuracy}%`;
   els.timeValue.textContent = formatTime(metrics.elapsedMs);
-  els.characterCount.textContent = `${chapterState.position} / ${chapter.text.length} characters`;
+  els.characterCount.textContent = `${chapterState.position} / ${characters.length} characters`;
   els.typingProgressFill.style.width = `${percent}%`;
 }
 
@@ -575,6 +580,8 @@ function renderStats() {
 async function handleEpubUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
+  stopTimer();
+  persist();
   try {
     showToast('Opening your EPUB…');
     const book = await parseEpub(file);
@@ -583,7 +590,6 @@ async function handleEpubUpload(event) {
     else state.books.push(book);
     state.book = book;
     state.currentChapter = Math.max(0, Math.min(Number(state.bookProgress[book.id]?.currentChapter) || 0, book.chapters.length - 1));
-    state.startedAt = null;
     renderBook();
     showToast(`${book.chapters.length} chapters loaded.`);
   } catch (error) {
@@ -627,7 +633,23 @@ function isFrontMatter(title, text) {
 }
 
 function extractDisplayText(body) {
-  return body.textContent || '';
+  const blockElements = new Set(['ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'DIV', 'DL', 'DT', 'DD', 'FIGCAPTION', 'FIGURE', 'FOOTER', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER', 'HR', 'LI', 'NAV', 'OL', 'P', 'PRE', 'SECTION', 'TABLE', 'TR', 'UL']);
+
+  function collect(node) {
+    if (node.nodeType === 3) return node.nodeValue || '';
+    if (node.nodeType === 9) return [...node.childNodes].map(collect).join('');
+    if (node.nodeType !== 1) return '';
+    if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE' || node.tagName === 'NOSCRIPT') return '';
+    if (node.tagName === 'BR' || node.tagName === 'HR') return '\n';
+    const content = [...node.childNodes].map(collect).join('');
+    return blockElements.has(node.tagName) && content && !content.endsWith('\n') ? `${content}\n` : content;
+  }
+
+  return collect(body).replace(/^\n+|\n+$/g, '');
+}
+
+function getChapterCharacters(index = state.currentChapter) {
+  return [...state.book.chapters[index].text];
 }
 
 function normalizeText(value) {
