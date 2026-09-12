@@ -372,6 +372,12 @@ function renderChapter() {
   const fragment = document.createDocumentFragment();
   const emphasisRanges = chapter.emphasisRanges || [];
   let emphasisRangeIndex = 0;
+  const imagesByPosition = new Map();
+  (chapter.images || []).forEach((image) => {
+    const images = imagesByPosition.get(image.index) || [];
+    images.push(image);
+    imagesByPosition.set(image.index, images);
+  });
   const extraCharacters = chapterState.extraCharacters || [];
   const extrasByPosition = new Map();
   extraCharacters.forEach((extra) => {
@@ -380,6 +386,7 @@ function renderChapter() {
     extrasByPosition.set(extra.index, extras);
   });
   characters.forEach((character, index) => {
+    appendPassageImages(fragment, imagesByPosition.get(index));
     extrasByPosition.get(index)?.forEach((extra) => {
       const extraSpan = document.createElement('span');
       extraSpan.className = 'is-extra is-incorrect';
@@ -394,6 +401,7 @@ function renderChapter() {
     state.characterElements.push(span);
     fragment.appendChild(span);
   });
+  appendPassageImages(fragment, imagesByPosition.get(characters.length));
   els.passage.appendChild(fragment);
   advanceToFairCharacter(chapterState);
   for (let index = 0; index < chapterState.position; index += 1) setCharacterStatus(index, chapterState.statuses[index] || 'skipped');
@@ -401,6 +409,19 @@ function renderChapter() {
   els.typingHelp.classList.toggle('is-hidden', chapterState.position > 0 || chapterState.completed);
   if (chapterState.position >= characters.length && !chapterState.completed) finishChapter();
   updateSessionMetrics();
+}
+
+function appendPassageImages(fragment, images) {
+  (images || []).forEach((image) => {
+    const figure = document.createElement('figure');
+    figure.className = 'passage-image';
+    const imageElement = document.createElement('img');
+    imageElement.src = image.src;
+    imageElement.alt = image.alt || '';
+    imageElement.loading = 'lazy';
+    figure.appendChild(imageElement);
+    fragment.appendChild(figure);
+  });
 }
 
 function setCharacterStatus(index, status) {
@@ -771,8 +792,12 @@ async function parseEpub(file) {
       const titleNode = contents.querySelector('h1, h2, h3');
       const displayText = extractDisplayText(body || contents);
       const text = displayText.text;
-      const title = findTocTitle(book, toc, section.href) || titleNode?.textContent.trim() || 'Untitled';
-      if (isReadableChapter(text) && !isFrontMatter(title, text)) chapters.push({ title, text, emphasisRanges: displayText.emphasisRanges });
+      const images = await loadChapterImages(book, section, displayText.images);
+      const isReadable = isReadableChapter(text);
+      const isImagePage = images.length > 0 && !isReadable;
+      let title = findTocTitle(book, toc, section.href) || titleNode?.textContent.trim() || 'Untitled';
+      if (isImagePage && title === 'Untitled') title = 'Image';
+      if ((isReadable || isImagePage) && !isFrontMatter(title, text)) chapters.push({ title, text, emphasisRanges: displayText.emphasisRanges, images });
       section.unload();
     }
   } finally {
@@ -782,6 +807,27 @@ async function parseEpub(file) {
   const title = metadata?.title || file.name.replace(/\.epub$/i, '');
   const author = metadata?.creator || 'Imported EPUB';
   return { id: `epub-${file.name}-${file.size}-${file.lastModified}`, title, author, chapters };
+}
+
+async function loadChapterImages(book, section, imageAnchors = []) {
+  const images = [];
+  for (const image of imageAnchors) {
+    try {
+      const source = image.source.trim();
+      const resource = resolveSectionResource(book, section, source);
+      const src = /^(?:data|blob|https?):/i.test(resource) ? resource : URL.createObjectURL(await book.load(resource, 'blob'));
+      images.push({ index: image.index, src, alt: image.alt });
+    } catch (error) {
+      console.warn('Unable to load EPUB image.', error);
+    }
+  }
+  return images;
+}
+
+function resolveSectionResource(book, section, source) {
+  if (/^(?:data|blob|https?):/i.test(source)) return source.split('#')[0];
+  const sectionUrl = new URL(book.resolve(section.href, true), window.location.href);
+  return new URL(source.split('#')[0], sectionUrl).pathname;
 }
 
 function flattenNavigation(items, result = []) {
@@ -823,6 +869,7 @@ function extractDisplayText(body) {
   const blockElements = new Set(['ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'DIV', 'DL', 'DT', 'DD', 'FIGCAPTION', 'FIGURE', 'FOOTER', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER', 'HR', 'LI', 'NAV', 'OL', 'P', 'PRE', 'SECTION', 'TABLE', 'TR', 'UL']);
   const italicElements = new Set(['CITE', 'DFN', 'EM', 'I', 'VAR']);
   const characters = [];
+  const images = [];
 
   function appendText(value, emphasized = false) {
     [...value].forEach((character) => characters.push({ character, emphasized }));
@@ -838,8 +885,14 @@ function extractDisplayText(body) {
       return;
     }
     if (node.nodeType !== 1) return;
-    if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE' || node.tagName === 'NOSCRIPT') return;
-    if (node.tagName === 'BR' || node.tagName === 'HR') {
+    const tagName = node.tagName.toUpperCase();
+    if (tagName === 'SCRIPT' || tagName === 'STYLE' || tagName === 'NOSCRIPT') return;
+    if (tagName === 'IMG' || tagName === 'IMAGE') {
+      const source = node.getAttribute('src') || node.getAttribute('href') || node.getAttribute('xlink:href');
+      if (source) images.push({ index: characters.length, source, alt: node.getAttribute('alt') || '' });
+      return;
+    }
+    if (tagName === 'BR' || tagName === 'HR') {
       appendText('\n');
       return;
     }
@@ -847,7 +900,7 @@ function extractDisplayText(body) {
     const start = characters.length;
     [...node.childNodes].forEach((child) => collect(child, nodeEmphasized));
     const lastCharacter = characters[characters.length - 1];
-    if (blockElements.has(node.tagName) && characters.length > start && lastCharacter.character !== '\n') appendText('\n');
+    if (blockElements.has(tagName) && characters.length > start && lastCharacter.character !== '\n') appendText('\n');
   }
 
   collect(body);
@@ -865,11 +918,11 @@ function extractDisplayText(body) {
   });
   if (rangeStart !== null) emphasisRanges.push({ start: rangeStart, end: characters.length });
 
-  return { text: characters.map((entry) => entry.character).join(''), emphasisRanges };
+  return { text: characters.map((entry) => entry.character).join(''), emphasisRanges, images };
 }
 
 function isItalicElement(node, italicElements) {
-  if (italicElements.has(node.tagName)) return true;
+  if (italicElements.has(node.tagName.toUpperCase())) return true;
   const style = node.getAttribute('style') || '';
   const className = typeof node.className === 'string' ? node.className : '';
   return /font-style\s*:\s*(?:italic|oblique)/i.test(style) || /(?:^|\s)(?:emphasis|italic|italics)(?:\s|$)/i.test(className);

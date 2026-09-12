@@ -42,7 +42,12 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .sidebar-practice-heading { display: block; width: 100%; margin: 2px 0 0; padding: 8px 25px 10px; border: 0; border-bottom: 1px solid rgba(255,255,255,.16); color: #fffefa; background: transparent; cursor: pointer; font: 600 18px/1 var(--font-sans); text-align: left; }
 .sidebar-practice-heading:hover, .sidebar-practice-heading.is-active { color: var(--coral); }
 .practice-library { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; }
-.book-list { display: grid; min-height: 0; flex: 1; align-content: start; grid-auto-rows: max-content; gap: 0; overflow-y: auto; }
+.book-list { display: grid; min-height: 0; flex: 1; align-content: start; grid-auto-rows: max-content; gap: 0; overflow-y: auto; direction: rtl; scrollbar-color: rgba(233,120,93,.8) transparent; scrollbar-width: thin; }
+.book-list::-webkit-scrollbar { width: 8px; }
+.book-list::-webkit-scrollbar-track { background: transparent; }
+.book-list::-webkit-scrollbar-thumb { border: 2px solid var(--ink); background: rgba(233,120,93,.8); }
+.book-list::-webkit-scrollbar-thumb:hover { background: var(--coral); }
+.book-list > .book-details { direction: ltr; }
 .book-details { border-top: 1px solid rgba(255,255,255,.12); background: transparent; }
 .book-details:last-child { border-bottom: 1px solid rgba(255,255,255,.12); }
 .book-details[open] { border-color: rgba(233,120,93,.5); background: rgba(255,255,255,.025); }
@@ -96,6 +101,8 @@ h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--fo
 .passage-frame { position: relative; min-height: 238px; padding: 2px 0 5px; cursor: text; }
 .practice-view .passage-frame { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; }
 .passage { color: var(--remaining-color); font: 400 clamp(21px, 2.5vw, 30px)/1.75 var(--font-sans); letter-spacing: -.012em; white-space: pre-wrap; }
+.passage-image { margin: 1.5em 0; text-align: center; }
+.passage-image img { display: block; width: auto; max-width: 100%; max-height: 70vh; margin: 0 auto; object-fit: contain; }
 .passage span.is-paragraph-start { margin-left: 1.25em; }
 .passage span.is-emphasis { font-style: italic; }
 .passage span.is-current { color: var(--remaining-color); background: var(--current-background); }
