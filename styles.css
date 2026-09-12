@@ -38,9 +38,8 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .sidebar-tabs .mode-button { padding: 9px 8px; }
 .sidebar-tabs .mode-button.is-active { color: #fffefa; background: rgba(233,120,93,.16); }
 .sidebar-tabs .mode-button::after { display: none; }
-.sidebar-practice-heading { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 11px 8px; border: 0; border-bottom: 1px solid rgba(255,255,255,.12); color: #fffefa; background: transparent; cursor: pointer; font: 700 13px var(--font-sans); text-align: left; }
-.sidebar-practice-heading span:last-child { color: var(--coral); font: 18px var(--font-mono); }
-.sidebar-practice-heading:hover, .sidebar-practice-heading.is-active { background: rgba(255,255,255,.04); }
+.sidebar-practice-heading { display: block; width: 100%; margin: 2px 0 0; padding: 8px 8px 10px; border: 0; border-bottom: 1px solid rgba(255,255,255,.16); color: #fffefa; background: transparent; cursor: pointer; font: 600 18px/1 var(--font-sans); text-align: left; }
+.sidebar-practice-heading:hover, .sidebar-practice-heading.is-active { color: var(--coral); background: transparent; }
 .practice-library { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; }
 .sidebar-reset { align-self: flex-start; margin-top: -5px; color: #9ca7bc; }
 .book-list { display: grid; min-height: 0; gap: 8px; overflow-y: auto; }
@@ -93,7 +92,7 @@ h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--fo
 .passage-frame { position: relative; min-height: 238px; padding: 2px 0 5px; cursor: text; }
 .practice-view .passage-frame { flex: 1; min-height: 0; overflow: auto; }
 .passage { color: var(--remaining-color); font: 400 clamp(21px, 2.5vw, 30px)/1.75 var(--font-sans); letter-spacing: -.012em; white-space: pre-wrap; }
-.passage span.is-current { color: var(--typed-color); background: var(--current-background); }
+.passage span.is-current { color: var(--remaining-color); background: var(--current-background); }
 .passage span.is-correct { color: var(--typed-color); }
 .passage span.is-incorrect { color: var(--error-color); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }
 .typing-help { position: absolute; right: 0; bottom: -14px; margin: 0; color: #a8adb5; font: 10px var(--font-mono); letter-spacing: .03em; transition: opacity .2s; }

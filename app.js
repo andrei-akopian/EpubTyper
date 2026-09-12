@@ -355,6 +355,7 @@ function selectBook(bookId) {
 }
 
 function selectChapterForBook(bookId, index) {
+  setView('practice');
   if (bookId !== state.book.id) selectBook(bookId);
   selectChapter(index);
 }
