@@ -666,15 +666,17 @@ async function parseEpub(file) {
   const book = ePub(await file.arrayBuffer());
   await book.ready;
   const metadata = await book.loaded.metadata;
+  const navigation = await book.loaded.navigation;
+  const toc = flattenNavigation(navigation?.toc || []);
   const chapters = [];
   try {
     for (const section of book.spine.spineItems) {
       if (!section.linear || (section.properties || []).includes('nav')) continue;
       const contents = await section.load(book.load.bind(book));
       const body = contents.querySelector('body');
-      const titleNode = contents.querySelector('h1, h2, h3, title');
+      const titleNode = contents.querySelector('h1, h2, h3');
       const text = extractDisplayText(body || contents);
-      const title = titleNode?.textContent.trim() || `Chapter ${chapters.length + 1}`;
+      const title = findTocTitle(book, toc, section.href) || titleNode?.textContent.trim() || `Chapter ${chapters.length + 1}`;
       if (text && !isFrontMatter(title, text)) chapters.push({ title, text });
       section.unload();
     }
@@ -685,6 +687,31 @@ async function parseEpub(file) {
   const title = metadata?.title || file.name.replace(/\.epub$/i, '');
   const author = metadata?.creator || 'Imported EPUB';
   return { id: `epub-${file.name}-${file.size}-${file.lastModified}`, title, author, chapters };
+}
+
+function flattenNavigation(items, result = []) {
+  items.forEach((item) => {
+    result.push(item);
+    flattenNavigation(item.subitems || [], result);
+  });
+  return result;
+}
+
+function findTocTitle(book, toc, sectionHref) {
+  const target = canonicalEpubHref(book, sectionHref);
+  if (!target) return '';
+  const item = toc.find((entry) => canonicalEpubHref(book, entry.href) === target);
+  return item?.label?.trim() || '';
+}
+
+function canonicalEpubHref(book, href) {
+  const path = String(href || '').split(/[?#]/, 1)[0];
+  if (!path) return '';
+  try {
+    return decodeURIComponent(book.canonical(path));
+  } catch {
+    return path;
+  }
 }
 
 function isFrontMatter(title, text) {
