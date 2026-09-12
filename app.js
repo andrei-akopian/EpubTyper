@@ -307,10 +307,11 @@ function getBookState() {
 function getChapterState(index = state.currentChapter) {
   const bookState = getBookState();
   if (!bookState.chapters[index]) {
-    bookState.chapters[index] = { position: 0, statuses: [], attempts: 0, correct: 0, correctEvents: 0, incorrectEvents: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0 };
+    bookState.chapters[index] = { position: 0, statuses: [], attempts: 0, correct: 0, correctEvents: 0, incorrectEvents: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0, extraCharacters: [] };
   }
   bookState.chapters[index].statuses = bookState.chapters[index].statuses || [];
   bookState.chapters[index].events = bookState.chapters[index].events || [];
+  bookState.chapters[index].extraCharacters = bookState.chapters[index].extraCharacters || [];
   bookState.chapters[index].eventCount = bookState.chapters[index].eventCount || bookState.chapters[index].events.length;
   bookState.chapters[index].correctEvents = bookState.chapters[index].correctEvents || 0;
   bookState.chapters[index].incorrectEvents = bookState.chapters[index].incorrectEvents || 0;
@@ -371,7 +372,20 @@ function renderChapter() {
   const fragment = document.createDocumentFragment();
   const emphasisRanges = chapter.emphasisRanges || [];
   let emphasisRangeIndex = 0;
+  const extraCharacters = chapterState.extraCharacters || [];
+  const extrasByPosition = new Map();
+  extraCharacters.forEach((extra) => {
+    const extras = extrasByPosition.get(extra.index) || [];
+    extras.push(extra.character);
+    extrasByPosition.set(extra.index, extras);
+  });
   characters.forEach((character, index) => {
+    extrasByPosition.get(index)?.forEach((extra) => {
+      const extraSpan = document.createElement('span');
+      extraSpan.className = 'is-extra is-incorrect';
+      extraSpan.textContent = extra;
+      fragment.appendChild(extraSpan);
+    });
     const span = document.createElement('span');
     span.textContent = character;
     if (index === 0 || characters[index - 1] === '\n') span.classList.add('is-paragraph-start');
@@ -400,7 +414,11 @@ function setCharacterStatus(index, status) {
 function moveCursor(index) {
   if (state.currentCharacter >= 0) state.characterElements[state.currentCharacter]?.classList.remove('is-current');
   state.currentCharacter = index;
-  if (index >= 0) state.characterElements[index]?.classList.add('is-current');
+  if (index >= 0) {
+    const element = state.characterElements[index];
+    element?.classList.add('is-current');
+    element?.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+  }
 }
 
 function advanceToFairCharacter(chapterState) {
@@ -507,17 +525,31 @@ function typeCharacter(character) {
     state.startedAt = Date.now();
     startTimer();
   }
+  if (character === ' ' && characters[chapterState.position] !== ' ') {
+    alignToNextSpace(characters, chapterState);
+    if (chapterState.position >= characters.length) {
+      finishChapter();
+      return;
+    }
+  }
   const expected = characters[chapterState.position];
+  if (/\s/.test(expected) && !/\s/.test(character)) {
+    chapterState.extraCharacters = chapterState.extraCharacters || [];
+    chapterState.extraCharacters.push({ index: chapterState.position, character });
+    chapterState.incorrectEvents += 1;
+    chapterState.attempts += 1;
+    recordTypingEvent(chapterState, { at: Date.now(), index: chapterState.position, key: character, expected, skipped: 0, correct: false, extra: true });
+    renderChapter();
+    renderBookProgress();
+    persistSoon();
+    return;
+  }
   const isCorrect = character === expected;
   chapterState.statuses[chapterState.position] = isCorrect ? 'correct' : 'incorrect';
   setCharacterStatus(chapterState.position, isCorrect ? 'correct' : 'incorrect');
   if (isCorrect) chapterState.correctEvents += 1;
   else chapterState.incorrectEvents += 1;
-  chapterState.events = chapterState.events || [];
-  const event = { at: Date.now(), index: chapterState.position, key: character, expected, skipped: chapterState.position - before, correct: isCorrect };
-  if (chapterState.events.length < 5000) chapterState.events.push(event);
-  else chapterState.events[chapterState.eventCount % 5000] = event;
-  chapterState.eventCount += 1;
+  recordTypingEvent(chapterState, { at: Date.now(), index: chapterState.position, key: character, expected, skipped: chapterState.position - before, correct: isCorrect });
   chapterState.position += 1;
   chapterState.attempts += 1;
   if (isCorrect) chapterState.correct += 1;
@@ -530,9 +562,48 @@ function typeCharacter(character) {
   persistSoon();
 }
 
+function alignToNextSpace(characters, chapterState) {
+  let index = chapterState.position;
+  while (index < characters.length) {
+    if (characters[index] === ' ' && isFairCharacterAt(characters, index)) {
+      chapterState.position = index;
+      return;
+    }
+    if (isFairCharacterAt(characters, index)) {
+      chapterState.statuses[index] = 'incorrect';
+      setCharacterStatus(index, 'incorrect');
+      chapterState.incorrectEvents += 1;
+    } else {
+      chapterState.statuses[index] = 'skipped';
+      setCharacterStatus(index, 'skipped');
+    }
+    index += 1;
+  }
+  chapterState.position = index;
+}
+
+function recordTypingEvent(chapterState, event) {
+  chapterState.events = chapterState.events || [];
+  chapterState.eventCount = chapterState.eventCount || 0;
+  if (chapterState.events.length < 5000) chapterState.events.push(event);
+  else chapterState.events[chapterState.eventCount % 5000] = event;
+  chapterState.eventCount += 1;
+}
+
 function stepBack() {
   const chapterState = getChapterState();
-  if (!chapterState.position || chapterState.completed) return;
+  if (chapterState.completed) return;
+  chapterState.extraCharacters = chapterState.extraCharacters || [];
+  for (let index = chapterState.extraCharacters.length - 1; index >= 0; index -= 1) {
+    if (chapterState.extraCharacters[index].index === chapterState.position) {
+      chapterState.extraCharacters.splice(index, 1);
+      renderChapter();
+      renderBookProgress();
+      persistSoon();
+      return;
+    }
+  }
+  if (!chapterState.position) return;
   let previous = chapterState.position - 1;
   while (previous >= 0 && chapterState.statuses[previous] === 'skipped') {
     chapterState.statuses[previous] = undefined;
@@ -575,7 +646,7 @@ function finishChapter() {
 function resetChapter() {
   stopTimer();
   const bookState = getBookState();
-  bookState.chapters[state.currentChapter] = { position: 0, statuses: [], attempts: 0, correct: 0, correctEvents: 0, incorrectEvents: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0 };
+  bookState.chapters[state.currentChapter] = { position: 0, statuses: [], attempts: 0, correct: 0, correctEvents: 0, incorrectEvents: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0, extraCharacters: [] };
   state.startedAt = null;
   persist();
   renderChapter();

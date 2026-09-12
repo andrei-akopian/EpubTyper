@@ -17,13 +17,13 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: var(--ink); }
-body { margin: 0; color: var(--ink); background: var(--ink); font-family: var(--font-sans); }
+html { min-width: 320px; height: 100%; background: var(--ink); overflow: hidden; }
+body { height: 100%; margin: 0; color: var(--ink); background: var(--ink); font-family: var(--font-sans); overflow: hidden; }
 button, input { font: inherit; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--coral); outline-offset: 4px; }
 
-.app-shell { display: grid; grid-template-columns: 274px minmax(0, 1fr); min-height: 100vh; }
+.app-shell { display: grid; grid-template-columns: 274px minmax(0, 1fr); height: 100vh; min-height: 100vh; overflow: hidden; }
 .sidebar { display: flex; position: sticky; top: 0; height: 100vh; min-height: 100vh; align-self: start; flex-direction: column; gap: 26px; padding: 34px 0 25px; color: #f2f0e8; background: var(--ink); }
 .brand-lockup { display: flex; align-items: center; padding: 0 25px; }
 .brand-name { margin: 0; font-weight: 700; letter-spacing: -.04em; }
@@ -64,9 +64,10 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .sidebar-footer { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-right: 25px; padding-left: 25px; color: #7e899e; font-size: 10px; line-height: 1.4; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 3px rgba(185,214,203,.12); }
 
-.main-content { position: relative; display: flex; min-width: 0; min-height: 100vh; flex-direction: column; padding: 0; background: #f3f4f6; overflow: hidden; }
+.main-content { position: relative; display: flex; height: 100vh; min-width: 0; min-height: 100vh; flex-direction: column; padding: 0; background: #f3f4f6; overflow: hidden; }
 .view { position: relative; z-index: 1; max-width: none; margin: 0 auto; }
 .main-content > .view[hidden] { display: none !important; }
+.stats-view, .settings-view { max-height: 100%; overflow-x: hidden; overflow-y: auto; }
 .mode-button { position: relative; padding: 0; border: 0; color: #9299a8; background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
 .mode-button::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: transparent; content: ''; }
 .mode-button:hover, .mode-button.is-active { color: var(--ink); }
@@ -93,7 +94,7 @@ h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--fo
 .typing-progress { height: 3px; margin: 32px 0 25px; background: var(--paper-deep); }
 .typing-progress span { display: block; width: 0; height: 100%; background: var(--coral); transition: width .16s ease; }
 .passage-frame { position: relative; min-height: 238px; padding: 2px 0 5px; cursor: text; }
-.practice-view .passage-frame { flex: 1; min-height: 0; overflow: auto; }
+.practice-view .passage-frame { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; }
 .passage { color: var(--remaining-color); font: 400 clamp(21px, 2.5vw, 30px)/1.75 var(--font-sans); letter-spacing: -.012em; white-space: pre-wrap; }
 .passage span.is-paragraph-start { margin-left: 1.25em; }
 .passage span.is-emphasis { font-style: italic; }
@@ -150,7 +151,10 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
 .settings-reset:hover { border-color: var(--coral); color: var(--ink); }
 
 @media (max-width: 820px) {
-  .app-shell { display: block; }
+  html, body { height: auto; overflow: auto; }
+  .app-shell { display: block; height: auto; min-height: 100vh; overflow: visible; }
+  .main-content { height: auto; overflow: visible; }
+  .stats-view, .settings-view { max-height: none; overflow: visible; }
   .sidebar { display: grid; position: static; height: auto; min-height: 0; grid-template-columns: 1fr 1fr; gap: 18px 20px; padding: 20px 0; }
   .brand-lockup { grid-column: 1 / -1; padding-right: 20px; padding-left: 20px; }
   .upload-button { align-self: start; }
