@@ -815,7 +815,7 @@ async function loadChapterImages(book, section, imageAnchors = []) {
     try {
       const source = image.source.trim();
       const resource = resolveSectionResource(book, section, source);
-      const src = /^(?:data|blob|https?):/i.test(resource) ? resource : URL.createObjectURL(await book.load(resource, 'blob'));
+      const src = /^(?:data|blob|https?):/i.test(resource) ? resource : URL.createObjectURL(await book.archive.request(book.resolve(resource), 'blob'));
       images.push({ index: image.index, src, alt: image.alt });
     } catch (error) {
       console.warn('Unable to load EPUB image.', error);
@@ -886,7 +886,7 @@ function extractDisplayText(body) {
     }
     if (node.nodeType !== 1) return;
     const tagName = node.tagName.toUpperCase();
-    if (tagName === 'SCRIPT' || tagName === 'STYLE' || tagName === 'NOSCRIPT') return;
+    if (tagName === 'HEAD' || tagName === 'SCRIPT' || tagName === 'STYLE' || tagName === 'NOSCRIPT') return;
     if (tagName === 'IMG' || tagName === 'IMAGE') {
       const source = node.getAttribute('src') || node.getAttribute('href') || node.getAttribute('xlink:href');
       if (source) images.push({ index: characters.length, source, alt: node.getAttribute('alt') || '' });
@@ -904,7 +904,12 @@ function extractDisplayText(body) {
   }
 
   collect(body);
-  while (characters[0]?.character === '\n') characters.shift();
+  let leadingNewlines = 0;
+  while (characters[0]?.character === '\n') {
+    characters.shift();
+    leadingNewlines += 1;
+  }
+  if (leadingNewlines) images.forEach((image) => { image.index = Math.max(0, image.index - leadingNewlines); });
   while (characters[characters.length - 1]?.character === '\n') characters.pop();
 
   const emphasisRanges = [];
