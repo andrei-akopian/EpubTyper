@@ -24,7 +24,7 @@ button { color: inherit; }
 button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--coral); outline-offset: 4px; }
 
 .app-shell { display: grid; grid-template-columns: 274px minmax(0, 1fr); height: 100vh; min-height: 100vh; overflow: hidden; }
-.sidebar { display: flex; position: sticky; top: 0; height: 100vh; min-height: 100vh; align-self: start; flex-direction: column; gap: 26px; padding: 34px 0 25px; color: #f2f0e8; background: var(--ink); }
+.sidebar { display: flex; position: sticky; top: 0; height: 100vh; min-height: 100vh; align-self: start; flex-direction: column; gap: 26px; padding: 34px 0 0; color: #f2f0e8; background: var(--ink); }
 .brand-lockup { display: flex; align-items: center; padding: 0 25px; }
 .brand-name { margin: 0; font-weight: 700; letter-spacing: -.04em; }
 .brand-tagline { margin: 3px 0 0; color: #9ca7bc; font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
@@ -35,14 +35,14 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .upload-button input { display: none; }
 .upload-icon { display: grid; place-items: center; width: 19px; height: 19px; border: 1px solid var(--coral); color: var(--coral); font-size: 17px; font-weight: 400; line-height: 1; }
 .sidebar-tabs { display: grid; gap: 0; padding: 0; border: 0; }
-.sidebar-tabs .mode-button { width: 100%; padding: 11px 25px; text-align: left; }
-.sidebar-tabs .mode-button:hover, .sidebar-tabs .mode-button.is-active { color: #fffefa; background: rgba(233,120,93,.13); }
-.sidebar-tabs .mode-button.is-active { box-shadow: inset 3px 0 var(--coral); }
+.sidebar-tabs .mode-button { width: 100%; padding: 8px 25px 10px; color: #fffefa; text-align: left; font: 600 18px/1 var(--font-sans); }
+.sidebar-tabs .mode-button:hover, .sidebar-tabs .mode-button.is-active { color: var(--coral); background: transparent; }
+.sidebar-tabs .mode-button.is-active { box-shadow: none; }
 .sidebar-tabs .mode-button::after { display: none; }
 .sidebar-practice-heading { display: block; width: 100%; margin: 2px 0 0; padding: 8px 25px 10px; border: 0; border-bottom: 1px solid rgba(255,255,255,.16); color: #fffefa; background: transparent; cursor: pointer; font: 600 18px/1 var(--font-sans); text-align: left; }
 .sidebar-practice-heading:hover, .sidebar-practice-heading.is-active { color: var(--coral); }
 .practice-library { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; }
-.book-list { display: grid; min-height: 0; flex: 1; gap: 0; overflow-y: auto; }
+.book-list { display: grid; min-height: 0; flex: 1; align-content: start; grid-auto-rows: max-content; gap: 0; overflow-y: auto; }
 .book-details { border-top: 1px solid rgba(255,255,255,.12); background: transparent; }
 .book-details:last-child { border-bottom: 1px solid rgba(255,255,255,.12); }
 .book-details[open] { border-color: rgba(233,120,93,.5); background: rgba(255,255,255,.025); }
@@ -104,7 +104,7 @@ h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--fo
 .typing-help { position: absolute; right: 0; bottom: -14px; margin: 0; color: #a8adb5; font: 10px var(--font-mono); letter-spacing: .03em; transition: opacity .2s; }
 .typing-help.is-hidden { opacity: 0; }
 .mobile-capture { position: absolute; left: -10000px; width: 1px; height: 1px; opacity: 0; }
-.session-footer { display: flex; justify-content: space-between; margin-top: 32px; padding-top: 15px; border-top: 1px solid var(--line); color: #9299a8; font: 10px var(--font-mono); }
+.session-toolbar-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; color: #9299a8; font: 10px/1.5 var(--font-mono); }
 kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font: 9px var(--font-mono); }
 .footer-divider { padding: 0 5px; color: var(--coral); }
 
@@ -173,8 +173,8 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
   .session-toolbar { display: block; }
   .session-toolbar-actions { justify-items: start; gap: 12px; }
   .session-stats { justify-content: flex-start; margin-top: 19px; text-align: left; }
-  .session-footer { gap: 12px; line-height: 1.8; }
-  .session-footer > span:first-child { max-width: 140px; }
+  .session-toolbar-meta { justify-content: flex-start; gap: 12px; line-height: 1.8; }
+  .session-toolbar-meta > span:first-child { max-width: 140px; }
   .stats-grid { gap: 8px; }
   .stat-card { min-height: 135px; padding: 14px; }
   .stat-card strong { font-size: 25px; }
