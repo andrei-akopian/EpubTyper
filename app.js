@@ -31,23 +31,40 @@ const DEFAULT_SETTINGS = {
   skipWhitespace: true,
   skipRepeatedSpaces: true
 };
+
+function sampleChapter(title, parts) {
+  let text = '';
+  const emphasisRanges = [];
+  parts.forEach((part) => {
+    const value = typeof part === 'string' ? part : part.text;
+    const start = [...text].length;
+    text += value;
+    if (part.italic) emphasisRanges.push({ start, end: start + [...value].length });
+  });
+  return { title, text, emphasisRanges };
+}
+
 const SAMPLE_BOOK = {
   id: 'sample-quiet-hour',
-  title: 'The Quiet Hour',
+  title: 'The Example Text',
   author: 'A sample reader',
   chapters: [
-    {
-      title: 'The first page',
-      text: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vitae sem at arcu facilisis luctus. Praesent euismod, justo at interdum feugiat, nibh neque posuere erat, vitae tincidunt lorem nibh sed erat.`
-    },
-    {
-      title: 'A room with a window',
-      text: `Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. Totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.`
-    },
-    {
-      title: 'The work of attention',
-      text: `Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet.`
-    }
+    sampleChapter('The First Chapter', [
+      { text: 'Lorem ipsum', italic: true },
+      ' dolor sit amet, consectetur adipiscing elit. Integer vitae sem at arcu facilisis luctus. ',
+      { text: 'Praesent euismod', italic: true },
+      ', justo at interdum feugiat, nibh neque posuere erat, vitae tincidunt lorem nibh sed erat.'
+    ]),
+    sampleChapter('The Second Chapter', [
+      'Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium ',
+      { text: 'doloremque laudantium', italic: true },
+      '. Totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.'
+    ]),
+    sampleChapter('The Third Chapter', [
+      'Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. ',
+      { text: 'Neque porro quisquam est', italic: true },
+      ', qui dolorem ipsum quia dolor sit amet.'
+    ])
   ]
 };
 
@@ -352,10 +369,14 @@ function renderChapter() {
   state.characterElements = [];
   state.currentCharacter = -1;
   const fragment = document.createDocumentFragment();
+  const emphasisRanges = chapter.emphasisRanges || [];
+  let emphasisRangeIndex = 0;
   characters.forEach((character, index) => {
     const span = document.createElement('span');
     span.textContent = character;
     if (index === 0 || characters[index - 1] === '\n') span.classList.add('is-paragraph-start');
+    while (emphasisRangeIndex < emphasisRanges.length && index >= emphasisRanges[emphasisRangeIndex].end) emphasisRangeIndex += 1;
+    if (emphasisRanges[emphasisRangeIndex]?.start <= index) span.classList.add('is-emphasis');
     state.characterElements.push(span);
     fragment.appendChild(span);
   });
@@ -677,9 +698,10 @@ async function parseEpub(file) {
       const contents = await section.load(book.load.bind(book));
       const body = contents.querySelector('body');
       const titleNode = contents.querySelector('h1, h2, h3');
-      const text = extractDisplayText(body || contents);
+      const displayText = extractDisplayText(body || contents);
+      const text = displayText.text;
       const title = findTocTitle(book, toc, section.href) || titleNode?.textContent.trim() || 'Untitled';
-      if (isReadableChapter(text) && !isFrontMatter(title, text)) chapters.push({ title, text });
+      if (isReadableChapter(text) && !isFrontMatter(title, text)) chapters.push({ title, text, emphasisRanges: displayText.emphasisRanges });
       section.unload();
     }
   } finally {
@@ -728,18 +750,58 @@ function isFrontMatter(title, text) {
 
 function extractDisplayText(body) {
   const blockElements = new Set(['ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'DIV', 'DL', 'DT', 'DD', 'FIGCAPTION', 'FIGURE', 'FOOTER', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER', 'HR', 'LI', 'NAV', 'OL', 'P', 'PRE', 'SECTION', 'TABLE', 'TR', 'UL']);
+  const italicElements = new Set(['CITE', 'DFN', 'EM', 'I', 'VAR']);
+  const characters = [];
 
-  function collect(node) {
-    if (node.nodeType === 3) return node.nodeValue || '';
-    if (node.nodeType === 9) return [...node.childNodes].map(collect).join('');
-    if (node.nodeType !== 1) return '';
-    if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE' || node.tagName === 'NOSCRIPT') return '';
-    if (node.tagName === 'BR' || node.tagName === 'HR') return '\n';
-    const content = [...node.childNodes].map(collect).join('');
-    return blockElements.has(node.tagName) && content && !content.endsWith('\n') ? `${content}\n` : content;
+  function appendText(value, emphasized = false) {
+    [...value].forEach((character) => characters.push({ character, emphasized }));
   }
 
-  return collect(body).replace(/^\n+|\n+$/g, '');
+  function collect(node, emphasized = false) {
+    if (node.nodeType === 3) {
+      appendText(node.nodeValue || '', emphasized);
+      return;
+    }
+    if (node.nodeType === 9) {
+      [...node.childNodes].forEach((child) => collect(child, emphasized));
+      return;
+    }
+    if (node.nodeType !== 1) return;
+    if (node.tagName === 'SCRIPT' || node.tagName === 'STYLE' || node.tagName === 'NOSCRIPT') return;
+    if (node.tagName === 'BR' || node.tagName === 'HR') {
+      appendText('\n');
+      return;
+    }
+    const nodeEmphasized = emphasized || isItalicElement(node, italicElements);
+    const start = characters.length;
+    [...node.childNodes].forEach((child) => collect(child, nodeEmphasized));
+    const lastCharacter = characters[characters.length - 1];
+    if (blockElements.has(node.tagName) && characters.length > start && lastCharacter.character !== '\n') appendText('\n');
+  }
+
+  collect(body);
+  while (characters[0]?.character === '\n') characters.shift();
+  while (characters[characters.length - 1]?.character === '\n') characters.pop();
+
+  const emphasisRanges = [];
+  let rangeStart = null;
+  characters.forEach((entry, index) => {
+    if (entry.emphasized && rangeStart === null) rangeStart = index;
+    if (!entry.emphasized && rangeStart !== null) {
+      emphasisRanges.push({ start: rangeStart, end: index });
+      rangeStart = null;
+    }
+  });
+  if (rangeStart !== null) emphasisRanges.push({ start: rangeStart, end: characters.length });
+
+  return { text: characters.map((entry) => entry.character).join(''), emphasisRanges };
+}
+
+function isItalicElement(node, italicElements) {
+  if (italicElements.has(node.tagName)) return true;
+  const style = node.getAttribute('style') || '';
+  const className = typeof node.className === 'string' ? node.className : '';
+  return /font-style\s*:\s*(?:italic|oblique)/i.test(style) || /(?:^|\s)(?:emphasis|italic|italics)(?:\s|$)/i.test(className);
 }
 
 function getChapterCharacters(index = state.currentChapter) {
