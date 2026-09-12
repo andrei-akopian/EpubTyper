@@ -86,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     liveRawWpm: document.querySelector('#live-raw-wpm'),
     toast: document.querySelector('#toast'),
     epubInput: document.querySelector('#epub-input'),
+    uploadDropzone: document.querySelector('#upload-dropzone'),
     resetButton: document.querySelector('#reset-button'),
     practiceView: document.querySelector('#practice-view'),
     statsView: document.querySelector('#stats-view'),
@@ -108,7 +109,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function bindEvents() {
-  els.epubInput.addEventListener('change', handleEpubUpload);
+  els.epubInput.addEventListener('change', () => handleEpubUpload(els.epubInput.files[0]));
+  els.uploadDropzone.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    els.uploadDropzone.classList.add('is-dragging');
+  });
+  els.uploadDropzone.addEventListener('dragleave', () => els.uploadDropzone.classList.remove('is-dragging'));
+  els.uploadDropzone.addEventListener('drop', (event) => {
+    event.preventDefault();
+    els.uploadDropzone.classList.remove('is-dragging');
+    handleEpubUpload(event.dataTransfer.files[0]);
+  });
   els.resetButton.addEventListener('click', resetChapter);
   els.resetSettings.addEventListener('click', resetSettings);
   els.typingSurface.addEventListener('click', focusTyping);
@@ -577,9 +588,12 @@ function renderStats() {
   els.historyList.innerHTML = completed.length ? completed.map((item) => `<div class="history-row"><div><strong>${escapeHtml(item.chapterTitle)}</strong><small>${escapeHtml(item.bookTitle)} · ${formatDate(item.date)}</small></div><span class="history-value">${item.wpm} wpm</span><span class="history-value">${item.rawWpm ?? item.wpm} raw</span><span class="history-value">${item.accuracy}% acc.</span></div>`).join('') : '<p class="empty-history">Finish a passage and it will appear here.</p>';
 }
 
-async function handleEpubUpload(event) {
-  const file = event.target.files[0];
+async function handleEpubUpload(file) {
   if (!file) return;
+  if (!/\.epub$/i.test(file.name) && file.type !== 'application/epub+zip') {
+    showToast('Please choose an EPUB file.');
+    return;
+  }
   stopTimer();
   persist();
   try {
@@ -596,7 +610,7 @@ async function handleEpubUpload(event) {
     console.error(error);
     showToast('That EPUB could not be opened. Try another file.');
   } finally {
-    event.target.value = '';
+    els.epubInput.value = '';
   }
 }
 

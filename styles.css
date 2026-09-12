@@ -30,8 +30,10 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .brand-mark span { position: relative; top: 2px; margin-left: 2px; font: 500 20px/1 var(--font-mono); letter-spacing: -3px; }
 .brand-name { margin: 0; font-weight: 700; letter-spacing: -.04em; }
 .brand-tagline { margin: 3px 0 0; color: #9ca7bc; font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
-.upload-button { display: flex; align-items: center; gap: 10px; padding: 12px 13px; border: 1px solid rgba(255,255,255,.18); color: #fffefa; cursor: pointer; font-size: 13px; font-weight: 700; transition: background .2s, border .2s; }
-.upload-button:hover { border-color: var(--coral); background: rgba(233,120,93,.13); }
+.upload-button { display: flex; align-items: center; gap: 12px; min-height: 84px; padding: 15px 13px; border: 1px dashed rgba(255,255,255,.28); color: #fffefa; cursor: pointer; font-size: 13px; font-weight: 700; transition: background .2s, border .2s; }
+.upload-button:hover, .upload-button.is-dragging { border-color: var(--coral); background: rgba(233,120,93,.13); }
+.upload-button strong { display: block; }
+.upload-button small { display: block; margin-top: 5px; color: #9ca7bc; font: 10px var(--font-mono); font-weight: 400; }
 .upload-button input { display: none; }
 .upload-icon { display: grid; place-items: center; width: 19px; height: 19px; border: 1px solid var(--coral); color: var(--coral); font-size: 17px; font-weight: 400; line-height: 1; }
 .sidebar-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid rgba(255,255,255,.12); }
@@ -41,7 +43,6 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .sidebar-practice-heading { display: block; width: 100%; margin: 2px 0 0; padding: 8px 8px 10px; border: 0; border-bottom: 1px solid rgba(255,255,255,.16); color: #fffefa; background: transparent; cursor: pointer; font: 600 18px/1 var(--font-sans); text-align: left; }
 .sidebar-practice-heading:hover, .sidebar-practice-heading.is-active { color: var(--coral); background: transparent; }
 .practice-library { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; }
-.sidebar-reset { align-self: flex-start; margin-top: -5px; color: #9ca7bc; }
 .book-list { display: grid; min-height: 0; gap: 8px; overflow-y: auto; }
 .book-details { border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
 .book-details[open] { border-color: rgba(233,120,93,.5); }
@@ -81,12 +82,14 @@ h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--fo
 .session-card { padding: clamp(22px, 4vw, 42px); background: var(--white); box-shadow: 0 8px 24px rgba(18, 28, 51, .08); }
 .practice-view .session-card { display: flex; flex: 1; min-height: 0; flex-direction: column; }
 .session-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.session-toolbar-actions { display: grid; justify-items: end; gap: 14px; }
 .session-kicker { margin: 0 0 8px; color: var(--coral); font: 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
 .session-toolbar h2 { margin: 0; font: 500 27px/1.1 var(--font-sans); }
 .session-stats { display: flex; gap: 25px; text-align: right; }
 .session-stats div { display: grid; gap: 4px; }
 .session-stats strong { font: 500 16px var(--font-mono); }
 .session-stats span { color: #9aa1af; font: 9px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.session-reset { color: #9299a8; }
 .typing-progress { height: 3px; margin: 32px 0 25px; background: var(--paper-deep); }
 .typing-progress span { display: block; width: 0; height: 100%; background: var(--coral); transition: width .16s ease; }
 .passage-frame { position: relative; min-height: 238px; padding: 2px 0 5px; cursor: text; }
@@ -146,7 +149,6 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
   .sidebar-tabs { grid-column: 1 / -1; }
   .sidebar-practice-heading { grid-column: 1 / -1; }
   .practice-library { grid-column: 1 / -1; }
-  .sidebar-reset { grid-column: 1; margin-top: 0; }
   .sidebar-footer { display: flex; }
   .book-list { max-height: 260px; }
   .chapter-button { min-width: 0; padding: 7px 10px; }
@@ -157,6 +159,7 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
 }
 @media (max-width: 500px) {
   .session-toolbar { display: block; }
+  .session-toolbar-actions { justify-items: start; gap: 12px; }
   .session-stats { justify-content: flex-start; margin-top: 19px; text-align: left; }
   .session-footer { gap: 12px; line-height: 1.8; }
   .session-footer > span:first-child { max-width: 140px; }

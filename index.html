@@ -24,11 +24,10 @@
         </nav>
         <button class="sidebar-practice-heading is-active" data-view="practice" type="button">Practice</button>
         <div class="practice-library">
-          <button class="text-button sidebar-reset" id="reset-button" type="button">Reset chapter <span aria-hidden="true">↺</span></button>
           <div class="book-list" id="book-list"></div>
-          <label class="upload-button sidebar-footer" for="epub-input">
+          <label class="upload-button sidebar-footer" id="upload-dropzone" for="epub-input">
             <span class="upload-icon" aria-hidden="true">+</span>
-            <span>Load an EPUB</span>
+            <span><strong>Load an EPUB</strong><small>Click or drop a file here</small></span>
             <input id="epub-input" type="file" accept=".epub,application/epub+zip" />
           </label>
         </div>
@@ -42,11 +41,14 @@
                 <p class="session-kicker" id="chapter-kicker">Chapter 01</p>
                 <h2 id="chapter-title">The first page</h2>
               </div>
-              <div class="session-stats">
-                <div><strong id="live-wpm">0</strong><span>wpm</span></div>
-                <div><strong id="accuracy-value">0%</strong><span>accuracy</span></div>
-                <div><strong id="live-raw-wpm">0</strong><span>raw wpm</span></div>
-                <div><strong id="time-value">00:00</strong><span>time</span></div>
+              <div class="session-toolbar-actions">
+                <div class="session-stats">
+                  <div><strong id="live-wpm">0</strong><span>wpm</span></div>
+                  <div><strong id="accuracy-value">0%</strong><span>accuracy</span></div>
+                  <div><strong id="live-raw-wpm">0</strong><span>raw wpm</span></div>
+                  <div><strong id="time-value">00:00</strong><span>time</span></div>
+                </div>
+                <button class="text-button session-reset" id="reset-button" type="button">Reset chapter <span aria-hidden="true">↺</span></button>
               </div>
             </div>
 
