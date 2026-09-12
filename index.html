@@ -49,14 +49,7 @@
       </aside>
 
       <main class="main-content">
-        <section class="view practice-view is-visible" id="practice-view" aria-labelledby="practice-heading">
-          <div class="intro-row">
-            <div class="live-metric" aria-live="polite">
-              <span class="metric-value" id="live-wpm">0</span>
-              <span class="metric-label">wpm</span>
-            </div>
-          </div>
-
+        <section class="view practice-view is-visible" id="practice-view" aria-labelledby="chapter-title">
           <div class="session-card">
             <div class="session-toolbar">
               <div>
@@ -64,6 +57,7 @@
                 <h2 id="chapter-title">The first page</h2>
               </div>
               <div class="session-stats">
+                <div><strong id="live-wpm">0</strong><span>wpm</span></div>
                 <div><strong id="accuracy-value">0%</strong><span>accuracy</span></div>
                 <div><strong id="live-raw-wpm">0</strong><span>raw wpm</span></div>
                 <div><strong id="time-value">00:00</strong><span>time</span></div>
@@ -87,12 +81,8 @@
         </section>
 
         <section class="view stats-view" id="stats-view" aria-labelledby="stats-heading" hidden>
-          <div class="intro-row">
-            <div>
-              <p class="eyebrow">Results</p>
-              <h1 id="stats-heading">Statistics</h1>
-            </div>
-          </div>
+          <p class="eyebrow">Results</p>
+          <h1 id="stats-heading">Statistics</h1>
           <div class="stats-grid">
             <article class="stat-card stat-card-accent"><span class="stat-card-label">Best speed</span><strong id="best-wpm">0</strong><span class="stat-card-unit">words per minute</span></article>
             <article class="stat-card"><span class="stat-card-label">Average accuracy</span><strong id="average-accuracy">0%</strong><span class="stat-card-unit">across completed runs</span></article>
@@ -106,12 +96,8 @@
         </section>
 
         <section class="view settings-view" id="settings-view" aria-labelledby="settings-heading" hidden>
-          <div class="intro-row">
-            <div>
-              <p class="eyebrow">Configuration</p>
-              <h1 id="settings-heading">Settings</h1>
-            </div>
-          </div>
+          <p class="eyebrow">Configuration</p>
+          <h1 id="settings-heading">Settings</h1>
           <div class="settings-grid">
             <section class="settings-card" aria-labelledby="colors-heading">
               <h2 id="colors-heading">Colors</h2>

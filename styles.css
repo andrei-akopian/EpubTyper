@@ -58,7 +58,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .sidebar-footer { display: flex; align-items: center; gap: 8px; margin-top: auto; color: #7e899e; font-size: 10px; line-height: 1.4; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 3px rgba(185,214,203,.12); }
 
-.main-content { position: relative; min-width: 0; min-height: 100vh; padding: 0 clamp(20px, 2.5vw, 40px) 24px; background: #f3f4f6; overflow: hidden; }
+.main-content { position: relative; display: flex; min-width: 0; min-height: 100vh; flex-direction: column; padding: 0; background: #f3f4f6; overflow: hidden; }
 .view { position: relative; z-index: 1; max-width: none; margin: 0 auto; }
 .mode-button { position: relative; padding: 0; border: 0; color: #9299a8; background: transparent; cursor: pointer; font-size: 12px; font-weight: 700; }
 .mode-button::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: transparent; content: ''; }
@@ -68,14 +68,10 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .text-button:hover { color: var(--coral); }
 .text-button span { margin-left: 4px; font-size: 16px; }
 .view { padding-top: 44px; }
-.practice-view { min-height: calc(100vh - 24px); display: flex; flex-direction: column; padding-top: clamp(24px, 5vh, 58px); padding-bottom: 24px; }
-.practice-view .intro-row { flex-shrink: 0; }
-.intro-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 25px; margin-bottom: 39px; }
+.practice-view { display: flex; flex: 1; min-height: 0; width: 100%; flex-direction: column; padding: 0; }
 .eyebrow { margin: 0 0 13px; color: var(--coral); font: 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--font-sans); letter-spacing: -.045em; }
-.live-metric { display: flex; align-items: baseline; gap: 7px; padding-bottom: 4px; color: var(--coral); }
-.metric-value { font: 500 39px/1 var(--font-mono); letter-spacing: -.1em; }
-.metric-label { color: var(--ink-soft); font: 10px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; }
+.stats-view h1, .settings-view h1 { margin-bottom: 39px; }
 .session-card { padding: clamp(22px, 4vw, 42px); background: var(--white); box-shadow: 0 8px 24px rgba(18, 28, 51, .08); }
 .practice-view .session-card { display: flex; flex: 1; min-height: 0; flex-direction: column; }
 .session-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
@@ -152,14 +148,11 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
   .chapter-nav > div { display: flex; overflow-x: auto; padding-bottom: 2px; }
   .chapter-button { min-width: max-content; padding: 7px 10px; border: 1px solid rgba(255,255,255,.12); }
   .chapter-button.is-active { border-color: var(--coral); }
-  .main-content { padding-right: 20px; padding-left: 20px; }
   .view { padding-top: 40px; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .settings-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 500px) {
-  .intro-row { align-items: flex-start; }
-  .live-metric { display: none; }
   .session-toolbar { display: block; }
   .session-stats { justify-content: flex-start; margin-top: 19px; text-align: left; }
   .session-footer { gap: 12px; line-height: 1.8; }
