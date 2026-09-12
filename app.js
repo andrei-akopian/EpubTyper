@@ -1,9 +1,31 @@
 const STORAGE_KEY = 'epubtyper-state-v3';
+const COMMON_CHARSET = [
+  'abcdefghijklmnopqrstuvwxyz',
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  '0123456789',
+  " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
+].join('');
+const CHARSET_PRESETS = {
+  qwerty: COMMON_CHARSET,
+  azerty: `${COMMON_CHARSET}àâäçéèêëîïôöùûüÿÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŸ`,
+  qwertz: `${COMMON_CHARSET}äöüßÄÖÜẞ`,
+  spanish: `${COMMON_CHARSET}áéíóúüñÁÉÍÓÚÜÑ¿¡`,
+  nordic: `${COMMON_CHARSET}åäöøæÅÄÖØÆ`,
+  russian: `${COMMON_CHARSET}йцукенгшщзхъфывапролджэячсмитьбюёЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЭЯЧСМИТЬБЮЁ`,
+  ukrainian: `${COMMON_CHARSET}йцукенгшщзхїґфівапролджєячсмитьбюЙЦУКЕНГШЩЗХЇҐФІВАПРОЛДЖЄЯЧСМИТЬБЮ`,
+  belarusian: `${COMMON_CHARSET}йцукенгшўзхъфывапролджэячсміцьбюЙЦУКЕНГШЎЗХЪФЫВАПРОЛДЖЭЯЧСМІЦЬБЮ`,
+  bulgarian: `${COMMON_CHARSET}йцукенгшщзхъфывапролджьтюЙЦУКЕНГШЩЗХЪФЫВАПРОЛДЖЬТЮ`,
+  polish: `${COMMON_CHARSET}ąćęłńóśźżĄĆĘŁŃÓŚŹŻ`,
+  czechSlovak: `${COMMON_CHARSET}áäčďéěíĺľňóôŕřšťúůýžÁÄČĎÉĚÍĹĽŇÓÔŔŘŠŤÚŮÝŽ`,
+  serbian: `${COMMON_CHARSET}љњђћџјзчшђЈЉЊЂЋЏЗЧШ`
+};
 const DEFAULT_SETTINGS = {
   remainingColor: '#a9adb4',
   typedColor: '#17223b',
   errorColor: '#e9785d',
   currentBackground: '#f6d8cc',
+  charsetPreset: 'qwerty',
+  charset: COMMON_CHARSET,
   skipUnicode: true,
   skipWhitespace: true,
   skipRepeatedSpaces: true
@@ -40,6 +62,7 @@ const state = {
   persistId: null,
   characterElements: [],
   currentCharacter: -1,
+  charsetSet: new Set(),
   bookProgressElements: new Map(),
   toastId: null
 };
@@ -67,6 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
     practiceView: document.querySelector('#practice-view'),
     statsView: document.querySelector('#stats-view'),
     settingsView: document.querySelector('#settings-view'),
+    charsetPreset: document.querySelector('#charset-preset'),
+    charsetInput: document.querySelector('#charset-input'),
     bestWpm: document.querySelector('#best-wpm'),
     averageAccuracy: document.querySelector('#average-accuracy'),
     sessionsFinished: document.querySelector('#sessions-finished'),
@@ -95,6 +120,8 @@ function bindEvents() {
   document.querySelectorAll('[data-setting]').forEach((input) => {
     input.addEventListener(input.type === 'color' ? 'input' : 'change', handleSettingChange);
   });
+  els.charsetPreset.addEventListener('change', handleCharsetPresetChange);
+  els.charsetInput.addEventListener('input', handleCharsetInput);
 }
 
 function loadState() {
@@ -136,11 +163,14 @@ function applySettings() {
   root.style.setProperty('--typed-color', state.settings.typedColor);
   root.style.setProperty('--error-color', state.settings.errorColor);
   root.style.setProperty('--current-background', state.settings.currentBackground);
+  state.charsetSet = new Set([...state.settings.charset]);
   document.querySelectorAll('[data-setting]').forEach((input) => {
     const value = state.settings[input.dataset.setting];
     if (input.type === 'checkbox') input.checked = Boolean(value);
     else input.value = value;
   });
+  els.charsetPreset.value = state.settings.charsetPreset;
+  els.charsetInput.value = state.settings.charset;
 }
 
 function handleSettingChange(event) {
@@ -156,6 +186,24 @@ function resetSettings() {
   applySettings();
   refreshTypingPosition();
   persist();
+}
+
+function handleCharsetPresetChange(event) {
+  const preset = event.target.value;
+  state.settings.charsetPreset = preset;
+  if (CHARSET_PRESETS[preset]) state.settings.charset = CHARSET_PRESETS[preset];
+  applySettings();
+  refreshTypingPosition();
+  persist();
+}
+
+function handleCharsetInput(event) {
+  state.settings.charsetPreset = 'custom';
+  state.settings.charset = event.target.value;
+  state.charsetSet = new Set([...state.settings.charset]);
+  els.charsetPreset.value = 'custom';
+  refreshTypingPosition();
+  persistSoon();
 }
 
 function refreshTypingPosition() {
@@ -586,8 +634,8 @@ function normalizeText(value) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').split('').map((character) => replacements[character] || character).join('').replace(/\s+/g, ' ').replace(/[^A-Za-z0-9 .,;:!?\-_'"()\[\]\/]/g, '').replace(/ {2,}/g, ' ').trim();
 }
 
-function isKeyboardCharacter(character) {
-  return /^[ -~]$/.test(character);
+function isCharsetCharacter(character) {
+  return state.charsetSet.has(character);
 }
 
 function characterFromKey(key) {
@@ -598,15 +646,16 @@ function characterFromKey(key) {
 
 function isInputCharacter(character) {
   if (!character || character === '\r') return false;
-  if (isKeyboardCharacter(character)) return true;
   if (/[\n\t]/.test(character)) return !state.settings.skipWhitespace;
-  return !state.settings.skipUnicode;
+  return isCharsetCharacter(character) || !state.settings.skipUnicode;
 }
 
 function isFairCharacterAt(text, index) {
   const character = text[index];
-  if (character === '\n' || character === '\t' || character === '\r') return !state.settings.skipWhitespace;
-  if (!isKeyboardCharacter(character)) return !state.settings.skipUnicode;
+  if (character === '\r') return false;
+  if (character === '\n' || character === '\t') return !state.settings.skipWhitespace;
+  if (character === ' ' && !isCharsetCharacter(character)) return !state.settings.skipUnicode;
+  if (!isCharsetCharacter(character)) return !state.settings.skipUnicode;
   if (character !== ' ') return true;
   const previous = text[index - 1];
   return !state.settings.skipRepeatedSpaces || !previous || !/[\s\u00a0]/.test(previous);

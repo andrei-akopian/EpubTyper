@@ -102,7 +102,9 @@
             </section>
             <section class="settings-card" aria-labelledby="skip-heading">
               <h2 id="skip-heading">Character skipping</h2>
-              <label class="check-row" for="skip-unicode"><input id="skip-unicode" data-setting="skipUnicode" type="checkbox" /><span>Skip non-QWERTY characters</span></label>
+              <label class="setting-row" for="charset-preset"><span>Charset preset</span><select id="charset-preset"><option value="qwerty">English QWERTY</option><option value="azerty">French AZERTY</option><option value="qwertz">German QWERTZ</option><option value="spanish">Spanish QWERTY</option><option value="nordic">Nordic QWERTY</option><option value="russian">Russian</option><option value="ukrainian">Ukrainian</option><option value="belarusian">Belarusian</option><option value="bulgarian">Bulgarian</option><option value="polish">Polish</option><option value="czechSlovak">Czech / Slovak</option><option value="serbian">Serbian</option><option value="custom">Custom</option></select></label>
+              <label class="charset-row" for="charset-input"><span>Non-skip charset</span><textarea id="charset-input" rows="3" spellcheck="false"></textarea></label>
+              <label class="check-row" for="skip-unicode"><input id="skip-unicode" data-setting="skipUnicode" type="checkbox" /><span>Skip characters outside charset</span></label>
               <label class="check-row" for="skip-whitespace"><input id="skip-whitespace" data-setting="skipWhitespace" type="checkbox" /><span>Skip line breaks and tabs</span></label>
               <label class="check-row" for="skip-repeated-spaces"><input id="skip-repeated-spaces" data-setting="skipRepeatedSpaces" type="checkbox" /><span>Skip repeated spaces</span></label>
             </section>

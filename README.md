@@ -22,4 +22,4 @@ Then open `http://localhost:4173`.
 
 The prototype stores typing position, session history, and stats in `localStorage`. EPUB loading and spine handling use the pinned `epub.js@0.3.93` browser build from jsDelivr, with its required pinned `JSZip@3.10.1` dependency loaded first.
 
-The Settings view controls passage colors and whether Unicode, line breaks, tabs, and repeated spaces are skipped.
+The Settings view controls passage colors, the editable non-skip charset, keyboard-layout presets, and whether characters outside the charset, line breaks, tabs, and repeated spaces are skipped.
