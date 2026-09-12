@@ -30,6 +30,7 @@ const SAMPLE_BOOK = {
 
 const state = {
   book: SAMPLE_BOOK,
+  books: [SAMPLE_BOOK],
   bookProgress: {},
   history: [],
   settings: { ...DEFAULT_SETTINGS },
@@ -39,6 +40,7 @@ const state = {
   persistId: null,
   characterElements: [],
   currentCharacter: -1,
+  bookProgressElements: new Map(),
   toastId: null
 };
 
@@ -46,12 +48,7 @@ const els = {};
 
 document.addEventListener('DOMContentLoaded', () => {
   Object.assign(els, {
-    bookTitle: document.querySelector('#book-title'),
-    bookAuthor: document.querySelector('#book-author'),
-    bookProgressFill: document.querySelector('#book-progress-fill'),
-    bookProgressLabel: document.querySelector('#book-progress-label'),
-    bookChapterCount: document.querySelector('#book-chapter-count'),
-    chapterList: document.querySelector('#chapter-list'),
+    bookList: document.querySelector('#book-list'),
     chapterKicker: document.querySelector('#chapter-kicker'),
     chapterTitle: document.querySelector('#chapter-title'),
     passage: document.querySelector('#passage'),
@@ -92,7 +89,7 @@ function bindEvents() {
   els.typingSurface.addEventListener('click', focusTyping);
   els.mobileCapture.addEventListener('input', handleMobileInput);
   document.addEventListener('keydown', handleKeydown);
-  document.querySelectorAll('.mode-button').forEach((button) => {
+  document.querySelectorAll('[data-view]').forEach((button) => {
     button.addEventListener('click', () => setView(button.dataset.view));
   });
   document.querySelectorAll('[data-setting]').forEach((input) => {
@@ -111,6 +108,7 @@ function loadState() {
   } catch {
     state.bookProgress = {};
     state.history = [];
+    state.settings = { ...DEFAULT_SETTINGS };
   }
 }
 
@@ -196,24 +194,44 @@ function getChapterState(index = state.currentChapter) {
 }
 
 function renderBook() {
-  els.bookTitle.textContent = state.book.title;
-  els.bookAuthor.textContent = state.book.author || 'Unknown author';
-  els.bookChapterCount.textContent = `${state.book.chapters.length} chapters`;
-  renderChapterList();
+  renderBookList();
   renderChapter();
   renderBookProgress();
 }
 
-function renderChapterList() {
-  els.chapterList.innerHTML = '';
-  state.book.chapters.forEach((chapter, index) => {
-    const button = document.createElement('button');
-    const chapterState = getChapterState(index);
-    button.className = `chapter-button${index === state.currentChapter ? ' is-active' : ''}`;
-    button.type = 'button';
-    button.innerHTML = `<span class="chapter-number">${String(index + 1).padStart(2, '0')}</span><span>${escapeHtml(chapter.title)} ${chapterState.completed ? '<span class="chapter-complete">✓</span>' : ''}</span>`;
-    button.addEventListener('click', () => selectChapter(index));
-    els.chapterList.appendChild(button);
+function renderBookList() {
+  els.bookList.replaceChildren();
+  state.bookProgressElements = new Map();
+  state.books.forEach((book) => {
+    const details = document.createElement('details');
+    details.className = 'book-details';
+    details.open = book.id === state.book.id;
+    const summary = document.createElement('summary');
+    const summaryCopy = document.createElement('span');
+    summaryCopy.className = 'book-summary-copy';
+    summaryCopy.innerHTML = `<span class="book-summary-title">${escapeHtml(book.title)}</span><span class="book-summary-meta">${escapeHtml(book.author || 'Unknown author')} · ${book.chapters.length} chapters</span>`;
+    const progress = document.createElement('span');
+    progress.className = 'book-summary-progress';
+    summary.append(summaryCopy, progress);
+    summary.addEventListener('click', () => {
+      if (book.id !== state.book.id) selectBook(book.id);
+    });
+    details.appendChild(summary);
+    const chapters = document.createElement('div');
+    chapters.className = 'book-chapters';
+    book.chapters.forEach((chapter, index) => {
+      const button = document.createElement('button');
+      const chapterState = state.bookProgress[book.id]?.chapters?.[index] || {};
+      button.className = `chapter-button${book.id === state.book.id && index === state.currentChapter ? ' is-active' : ''}`;
+      button.type = 'button';
+      button.innerHTML = `<span class="chapter-number">${String(index + 1).padStart(2, '0')}</span><span>${escapeHtml(chapter.title)} ${chapterState.completed ? '<span class="chapter-complete">✓</span>' : ''}</span>`;
+      button.addEventListener('click', () => selectChapterForBook(book.id, index));
+      chapters.appendChild(button);
+    });
+    details.appendChild(chapters);
+    els.bookList.appendChild(details);
+    state.bookProgressElements.set(book.id, progress);
+    updateBookProgress(book, progress);
   });
 }
 
@@ -266,11 +284,31 @@ function advanceToFairCharacter(chapterState) {
 }
 
 function renderBookProgress() {
-  const total = state.book.chapters.reduce((sum, chapter) => sum + chapter.text.length, 0);
-  const completed = state.book.chapters.reduce((sum, chapter, index) => sum + Math.min(getChapterState(index).position, chapter.text.length), 0);
-  const percent = total ? Math.round((completed / total) * 100) : 0;
-  els.bookProgressFill.style.width = `${percent}%`;
-  els.bookProgressLabel.textContent = `${percent}% complete`;
+  updateBookProgress(state.book, state.bookProgressElements.get(state.book.id));
+}
+
+function updateBookProgress(book, element) {
+  if (!element) return;
+  const total = book.chapters.reduce((sum, chapter) => sum + chapter.text.length, 0);
+  const completed = book.chapters.reduce((sum, chapter, index) => sum + Math.min(state.bookProgress[book.id]?.chapters?.[index]?.position || 0, chapter.text.length), 0);
+  element.textContent = `${total ? Math.round((completed / total) * 100) : 0}%`;
+}
+
+function selectBook(bookId) {
+  const book = state.books.find((candidate) => candidate.id === bookId);
+  if (!book || book.id === state.book.id) return;
+  stopTimer();
+  persist();
+  state.book = book;
+  state.currentChapter = Math.max(0, Math.min(Number(state.bookProgress[book.id]?.currentChapter) || 0, book.chapters.length - 1));
+  persist();
+  renderBook();
+  focusTyping();
+}
+
+function selectChapterForBook(bookId, index) {
+  if (bookId !== state.book.id) selectBook(bookId);
+  selectChapter(index);
 }
 
 function selectChapter(index) {
@@ -282,7 +320,7 @@ function selectChapter(index) {
   persist();
   state.currentChapter = index;
   persist();
-  renderChapterList();
+  renderBookList();
   renderChapter();
   renderBookProgress();
   focusTyping();
@@ -395,7 +433,7 @@ function finishChapter() {
   });
   state.history = state.history.slice(0, 20);
   persist();
-  renderChapterList();
+  renderBookList();
   renderStats();
   showToast('Chapter complete.');
 }
@@ -407,7 +445,7 @@ function resetChapter() {
   state.startedAt = null;
   persist();
   renderChapter();
-  renderChapterList();
+  renderBookList();
   renderBookProgress();
   focusTyping();
 }
@@ -461,10 +499,11 @@ function setView(view) {
   els.practiceView.classList.toggle('is-visible', practice);
   els.statsView.classList.toggle('is-visible', stats);
   els.settingsView.classList.toggle('is-visible', view === 'settings');
-  document.querySelectorAll('.mode-button').forEach((button) => {
+  document.querySelectorAll('[data-view]').forEach((button) => {
     const active = button.dataset.view === view;
     button.classList.toggle('is-active', active);
-    button.setAttribute('aria-selected', active ? 'true' : 'false');
+    if (button.hasAttribute('aria-selected')) button.setAttribute('aria-selected', active ? 'true' : 'false');
+    if (button.hasAttribute('aria-pressed')) button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
   if (!practice) {
     stopTimer();
@@ -490,6 +529,9 @@ async function handleEpubUpload(event) {
   try {
     showToast('Opening your EPUB…');
     const book = await parseEpub(file);
+    const existingIndex = state.books.findIndex((candidate) => candidate.id === book.id);
+    if (existingIndex >= 0) state.books[existingIndex] = book;
+    else state.books.push(book);
     state.book = book;
     state.currentChapter = Math.max(0, Math.min(Number(state.bookProgress[book.id]?.currentChapter) || 0, book.chapters.length - 1));
     state.startedAt = null;
