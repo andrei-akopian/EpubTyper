@@ -24,7 +24,7 @@ button { color: inherit; }
 button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--coral); outline-offset: 4px; }
 
 .app-shell { display: grid; grid-template-columns: 274px minmax(0, 1fr); min-height: 100vh; }
-.sidebar { display: flex; flex-direction: column; gap: 26px; padding: 34px 0 25px; color: #f2f0e8; background: var(--ink); }
+.sidebar { display: flex; position: sticky; top: 0; height: 100vh; min-height: 100vh; align-self: start; flex-direction: column; gap: 26px; padding: 34px 0 25px; color: #f2f0e8; background: var(--ink); }
 .brand-lockup { display: flex; align-items: center; padding: 0 25px; }
 .brand-name { margin: 0; font-weight: 700; letter-spacing: -.04em; }
 .brand-tagline { margin: 3px 0 0; color: #9ca7bc; font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
@@ -39,6 +39,8 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .sidebar-tabs .mode-button:hover, .sidebar-tabs .mode-button.is-active { color: #fffefa; background: rgba(233,120,93,.13); }
 .sidebar-tabs .mode-button.is-active { box-shadow: inset 3px 0 var(--coral); }
 .sidebar-tabs .mode-button::after { display: none; }
+.sidebar-practice-heading { display: block; width: 100%; margin: 2px 0 0; padding: 8px 25px 10px; border: 0; border-bottom: 1px solid rgba(255,255,255,.16); color: #fffefa; background: transparent; cursor: pointer; font: 600 18px/1 var(--font-sans); text-align: left; }
+.sidebar-practice-heading:hover, .sidebar-practice-heading.is-active { color: var(--coral); }
 .practice-library { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; }
 .book-list { display: grid; min-height: 0; flex: 1; gap: 0; overflow-y: auto; }
 .book-details { border-top: 1px solid rgba(255,255,255,.12); background: transparent; }
@@ -147,10 +149,11 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
 
 @media (max-width: 820px) {
   .app-shell { display: block; }
-  .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; padding: 20px 0; }
+  .sidebar { display: grid; position: static; height: auto; min-height: 0; grid-template-columns: 1fr 1fr; gap: 18px 20px; padding: 20px 0; }
   .brand-lockup { grid-column: 1 / -1; padding-right: 20px; padding-left: 20px; }
   .upload-button { align-self: start; }
   .sidebar-tabs { grid-column: 1 / -1; }
+  .sidebar-practice-heading { grid-column: 1 / -1; }
   .practice-library { grid-column: 1 / -1; }
   .sidebar-footer { display: flex; }
   .book-list { max-height: 260px; }
