@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#17223b" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <title>Epubtyper</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -18,7 +19,6 @@
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand-lockup">
-          <div class="brand-mark" aria-hidden="true">e<span>/</span></div>
           <div>
             <p class="brand-name">epubtyper</p>
             <p class="brand-tagline">EPUB typing</p>
@@ -26,10 +26,10 @@
         </div>
 
         <nav class="sidebar-tabs" role="tablist" aria-label="App views">
+          <button class="mode-button is-active" data-view="practice" role="tab" aria-selected="true">Practice</button>
           <button class="mode-button" data-view="stats" role="tab" aria-selected="false">Stats</button>
           <button class="mode-button" data-view="settings" role="tab" aria-selected="false">Settings</button>
         </nav>
-        <button class="sidebar-practice-heading is-active" data-view="practice" type="button">Practice</button>
         <div class="practice-library">
           <div class="book-list" id="book-list"></div>
           <label class="upload-button sidebar-footer" id="upload-dropzone" for="epub-input">

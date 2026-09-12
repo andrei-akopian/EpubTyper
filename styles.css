@@ -24,10 +24,8 @@ button { color: inherit; }
 button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--coral); outline-offset: 4px; }
 
 .app-shell { display: grid; grid-template-columns: 274px minmax(0, 1fr); min-height: 100vh; }
-.sidebar { display: flex; flex-direction: column; gap: 26px; padding: 34px 25px 25px; color: #f2f0e8; background: var(--ink); }
-.brand-lockup { display: flex; align-items: center; gap: 12px; }
-.brand-mark { display: grid; place-items: center; width: 40px; height: 40px; color: var(--ink); background: var(--coral); font: 600 25px/1 var(--font-sans); letter-spacing: -4px; }
-.brand-mark span { position: relative; top: 2px; margin-left: 2px; font: 500 20px/1 var(--font-mono); letter-spacing: -3px; }
+.sidebar { display: flex; flex-direction: column; gap: 26px; padding: 34px 0 25px; color: #f2f0e8; background: var(--ink); }
+.brand-lockup { display: flex; align-items: center; padding: 0 25px; }
 .brand-name { margin: 0; font-weight: 700; letter-spacing: -.04em; }
 .brand-tagline { margin: 3px 0 0; color: #9ca7bc; font: 10px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
 .upload-button { display: flex; align-items: center; gap: 12px; min-height: 84px; padding: 15px 13px; border: 1px dashed rgba(255,255,255,.28); color: #fffefa; cursor: pointer; font-size: 13px; font-weight: 700; transition: background .2s, border .2s; }
@@ -36,17 +34,17 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .upload-button small { display: block; margin-top: 5px; color: #9ca7bc; font: 10px var(--font-mono); font-weight: 400; }
 .upload-button input { display: none; }
 .upload-icon { display: grid; place-items: center; width: 19px; height: 19px; border: 1px solid var(--coral); color: var(--coral); font-size: 17px; font-weight: 400; line-height: 1; }
-.sidebar-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border: 1px solid rgba(255,255,255,.12); }
-.sidebar-tabs .mode-button { padding: 9px 8px; }
-.sidebar-tabs .mode-button.is-active { color: #fffefa; background: rgba(233,120,93,.16); }
+.sidebar-tabs { display: grid; gap: 0; padding: 0; border: 0; }
+.sidebar-tabs .mode-button { width: 100%; padding: 11px 25px; text-align: left; }
+.sidebar-tabs .mode-button:hover, .sidebar-tabs .mode-button.is-active { color: #fffefa; background: rgba(233,120,93,.13); }
+.sidebar-tabs .mode-button.is-active { box-shadow: inset 3px 0 var(--coral); }
 .sidebar-tabs .mode-button::after { display: none; }
-.sidebar-practice-heading { display: block; width: 100%; margin: 2px 0 0; padding: 8px 8px 10px; border: 0; border-bottom: 1px solid rgba(255,255,255,.16); color: #fffefa; background: transparent; cursor: pointer; font: 600 18px/1 var(--font-sans); text-align: left; }
-.sidebar-practice-heading:hover, .sidebar-practice-heading.is-active { color: var(--coral); background: transparent; }
 .practice-library { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 14px; }
-.book-list { display: grid; min-height: 0; gap: 8px; overflow-y: auto; }
-.book-details { border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.025); }
-.book-details[open] { border-color: rgba(233,120,93,.5); }
-.book-details summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 10px; cursor: pointer; list-style: none; }
+.book-list { display: grid; min-height: 0; flex: 1; gap: 0; overflow-y: auto; }
+.book-details { border-top: 1px solid rgba(255,255,255,.12); background: transparent; }
+.book-details:last-child { border-bottom: 1px solid rgba(255,255,255,.12); }
+.book-details[open] { border-color: rgba(233,120,93,.5); background: rgba(255,255,255,.025); }
+.book-details summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 25px; cursor: pointer; list-style: none; }
 .book-details summary::-webkit-details-marker { display: none; }
 .book-details summary::after { color: #68758e; content: '+'; font: 16px var(--font-mono); }
 .book-details[open] summary::after { color: var(--coral); content: '-'; }
@@ -54,14 +52,14 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3
 .book-summary-title { overflow: hidden; color: #f7f5ef; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
 .book-summary-meta { overflow: hidden; color: #8792a8; font: 10px var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
 .book-summary-progress { flex-shrink: 0; color: #8792a8; font: 10px var(--font-mono); }
-.book-chapters { display: grid; gap: 3px; padding: 0 7px 7px; }
+.book-chapters { display: grid; gap: 3px; padding: 0 18px 7px; }
 .chapter-button { display: grid; grid-template-columns: 27px 1fr; gap: 8px; padding: 8px; border: 0; border-left: 2px solid transparent; color: #9ca7bc; background: transparent; cursor: pointer; text-align: left; font-size: 12px; }
 .chapter-button:hover { color: #f5f3ec; background: rgba(255,255,255,.04); }
 .chapter-button.is-active { border-left-color: var(--coral); color: #fffefa; background: rgba(233,120,93,.11); }
 .chapter-number { color: #68758e; font: 10px var(--font-mono); }
 .chapter-button.is-active .chapter-number { color: var(--coral); }
 .chapter-complete { color: var(--mint); font-size: 10px; }
-.sidebar-footer { display: flex; align-items: center; gap: 8px; margin-top: auto; color: #7e899e; font-size: 10px; line-height: 1.4; }
+.sidebar-footer { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-right: 25px; padding-left: 25px; color: #7e899e; font-size: 10px; line-height: 1.4; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mint); box-shadow: 0 0 0 3px rgba(185,214,203,.12); }
 
 .main-content { position: relative; display: flex; min-width: 0; min-height: 100vh; flex-direction: column; padding: 0; background: #f3f4f6; overflow: hidden; }
@@ -149,11 +147,10 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
 
 @media (max-width: 820px) {
   .app-shell { display: block; }
-  .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; padding: 20px; }
-  .brand-lockup { grid-column: 1 / -1; }
+  .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 20px; padding: 20px 0; }
+  .brand-lockup { grid-column: 1 / -1; padding-right: 20px; padding-left: 20px; }
   .upload-button { align-self: start; }
   .sidebar-tabs { grid-column: 1 / -1; }
-  .sidebar-practice-heading { grid-column: 1 / -1; }
   .practice-library { grid-column: 1 / -1; }
   .sidebar-footer { display: flex; }
   .book-list { max-height: 260px; }
