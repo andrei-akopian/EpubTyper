@@ -95,6 +95,7 @@ h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--fo
 .passage-frame { position: relative; min-height: 238px; padding: 2px 0 5px; cursor: text; }
 .practice-view .passage-frame { flex: 1; min-height: 0; overflow: auto; }
 .passage { color: var(--remaining-color); font: 400 clamp(21px, 2.5vw, 30px)/1.75 var(--font-sans); letter-spacing: -.012em; white-space: pre-wrap; }
+.passage span.is-paragraph-start { margin-left: 1.25em; }
 .passage span.is-current { color: var(--remaining-color); background: var(--current-background); }
 .passage span.is-correct { color: var(--typed-color); }
 .passage span.is-incorrect { color: var(--error-color); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; }

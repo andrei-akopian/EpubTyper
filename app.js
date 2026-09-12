@@ -5,6 +5,7 @@ const COMMON_CHARSET = [
   '0123456789',
   " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 ].join('');
+const MIN_CHAPTER_CHARACTERS = 80;
 const CHARSET_PRESETS = {
   qwerty: COMMON_CHARSET,
   azerty: `${COMMON_CHARSET}àâäæçéèêëîïôœöùûüÿÀÂÄÆÇÉÈÊËÎÏÔŒÖÙÛÜŸ`,
@@ -37,15 +38,15 @@ const SAMPLE_BOOK = {
   chapters: [
     {
       title: 'The first page',
-      text: `There is a particular kind of silence that arrives before a town wakes. It is not empty. It is the sound of small things returning to their places: a cup set on a counter, a broom finding the front step, a bird testing one bright note. In that hour, the day has not yet decided what it will ask of us.`
+      text: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer vitae sem at arcu facilisis luctus. Praesent euismod, justo at interdum feugiat, nibh neque posuere erat, vitae tincidunt lorem nibh sed erat.`
     },
     {
       title: 'A room with a window',
-      text: `Mara kept her desk beside the window, though the view was only a brick wall and a narrow piece of sky. The wall changed less than the weather did, and that steadiness helped. Each morning she opened the book, placed both hands on the table, and began with the sentence that had been waiting for her.`
+      text: `Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium. Totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo.`
     },
     {
       title: 'The work of attention',
-      text: `To pay attention is to make a small promise. You promise to stay long enough for the ordinary world to show its second face. A page becomes a room. A minute becomes a thread. Even the pauses between words begin to carry their own quiet weight.`
+      text: `Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet.`
     }
   ]
 };
@@ -351,9 +352,10 @@ function renderChapter() {
   state.characterElements = [];
   state.currentCharacter = -1;
   const fragment = document.createDocumentFragment();
-  characters.forEach((character) => {
+  characters.forEach((character, index) => {
     const span = document.createElement('span');
     span.textContent = character;
+    if (index === 0 || characters[index - 1] === '\n') span.classList.add('is-paragraph-start');
     state.characterElements.push(span);
     fragment.appendChild(span);
   });
@@ -676,8 +678,8 @@ async function parseEpub(file) {
       const body = contents.querySelector('body');
       const titleNode = contents.querySelector('h1, h2, h3');
       const text = extractDisplayText(body || contents);
-      const title = findTocTitle(book, toc, section.href) || titleNode?.textContent.trim() || `Chapter ${chapters.length + 1}`;
-      if (text && !isFrontMatter(title, text)) chapters.push({ title, text });
+      const title = findTocTitle(book, toc, section.href) || titleNode?.textContent.trim() || 'Untitled';
+      if (isReadableChapter(text) && !isFrontMatter(title, text)) chapters.push({ title, text });
       section.unload();
     }
   } finally {
@@ -712,6 +714,10 @@ function canonicalEpubHref(book, href) {
   } catch {
     return path;
   }
+}
+
+function isReadableChapter(text) {
+  return text.replace(/\s/g, '').length >= MIN_CHAPTER_CHARACTERS;
 }
 
 function isFrontMatter(title, text) {
