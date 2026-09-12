@@ -64,7 +64,8 @@ const state = {
   currentCharacter: -1,
   charsetSet: new Set(),
   bookProgressElements: new Map(),
-  toastId: null
+  toastId: null,
+  fileDropDepth: 0
 };
 
 const els = {};
@@ -87,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toast: document.querySelector('#toast'),
     epubInput: document.querySelector('#epub-input'),
     uploadDropzone: document.querySelector('#upload-dropzone'),
+    fileDropOverlay: document.querySelector('#file-drop-overlay'),
     resetButton: document.querySelector('#reset-button'),
     practiceView: document.querySelector('#practice-view'),
     statsView: document.querySelector('#stats-view'),
@@ -110,16 +112,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function bindEvents() {
   els.epubInput.addEventListener('change', () => handleEpubUpload(els.epubInput.files[0]));
+  document.addEventListener('dragenter', handleFileDragEnter);
+  document.addEventListener('dragover', handleFileDragOver);
+  document.addEventListener('dragleave', handleFileDragLeave);
+  document.addEventListener('drop', handleFileDrop);
+  window.addEventListener('dragend', resetFileDropState);
   els.uploadDropzone.addEventListener('dragover', (event) => {
     event.preventDefault();
     els.uploadDropzone.classList.add('is-dragging');
   });
   els.uploadDropzone.addEventListener('dragleave', () => els.uploadDropzone.classList.remove('is-dragging'));
-  els.uploadDropzone.addEventListener('drop', (event) => {
-    event.preventDefault();
-    els.uploadDropzone.classList.remove('is-dragging');
-    handleEpubUpload(event.dataTransfer.files[0]);
-  });
   els.resetButton.addEventListener('click', resetChapter);
   els.resetSettings.addEventListener('click', resetSettings);
   els.typingSurface.addEventListener('click', focusTyping);
@@ -134,6 +136,50 @@ function bindEvents() {
   els.charsetPreset.addEventListener('change', handleCharsetPresetChange);
   els.charsetInput.addEventListener('input', handleCharsetInput);
   window.addEventListener('pagehide', persist);
+}
+
+function isFileDrag(event) {
+  const types = Array.from(event.dataTransfer?.types || []);
+  const items = Array.from(event.dataTransfer?.items || []);
+  return types.includes('Files') || items.some((item) => item.kind === 'file');
+}
+
+function setFileDropVisible(visible) {
+  els.fileDropOverlay.classList.toggle('is-visible', visible);
+  els.fileDropOverlay.setAttribute('aria-hidden', String(!visible));
+}
+
+function resetFileDropState() {
+  state.fileDropDepth = 0;
+  setFileDropVisible(false);
+  els.uploadDropzone.classList.remove('is-dragging');
+}
+
+function handleFileDragEnter(event) {
+  if (!isFileDrag(event)) return;
+  event.preventDefault();
+  state.fileDropDepth += 1;
+  setFileDropVisible(true);
+}
+
+function handleFileDragOver(event) {
+  if (!isFileDrag(event)) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+  setFileDropVisible(true);
+}
+
+function handleFileDragLeave(event) {
+  if (!isFileDrag(event)) return;
+  state.fileDropDepth = Math.max(0, state.fileDropDepth - 1);
+  if (!state.fileDropDepth) resetFileDropState();
+}
+
+function handleFileDrop(event) {
+  if (!isFileDrag(event)) return;
+  event.preventDefault();
+  resetFileDropState();
+  handleEpubUpload(event.dataTransfer.files[0]);
 }
 
 function loadState() {
@@ -592,6 +638,7 @@ async function handleEpubUpload(file) {
   if (!file) return;
   if (!/\.epub$/i.test(file.name) && file.type !== 'application/epub+zip') {
     showToast('Please choose an EPUB file.');
+    els.epubInput.value = '';
     return;
   }
   stopTimer();

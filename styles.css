@@ -126,6 +126,12 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
 .empty-history { margin: 0; padding: 20px 0; color: #9299a8; font-size: 13px; }
 .toast { position: fixed; right: 28px; bottom: 24px; z-index: 5; padding: 11px 15px; background: var(--ink); color: #fffefa; opacity: 0; pointer-events: none; transform: translateY(8px); transition: opacity .2s, transform .2s; font: 11px var(--font-mono); }
 .toast.is-visible { opacity: 1; transform: translateY(0); }
+.file-drop-overlay { position: fixed; inset: 0; z-index: 10; display: grid; place-items: center; padding: 24px; background: rgba(23,34,59,.88); opacity: 0; pointer-events: none; visibility: hidden; transition: opacity .18s ease, visibility .18s ease; }
+.file-drop-overlay.is-visible { opacity: 1; pointer-events: auto; visibility: visible; }
+.file-drop-prompt { display: grid; justify-items: center; gap: 9px; width: min(430px, 100%); padding: 48px 28px; border: 1px dashed rgba(255,255,255,.65); color: #fffefa; text-align: center; }
+.file-drop-icon { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--coral); color: var(--coral); font-size: 27px; line-height: 1; }
+.file-drop-prompt strong { font-size: 19px; font-weight: 500; }
+.file-drop-prompt small { color: #b8c0d0; font: 10px var(--font-mono); letter-spacing: .05em; text-transform: uppercase; }
 .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; max-width: 860px; }
 .settings-card { border: 1px solid var(--line); background: var(--white); }
 .settings-card h2 { margin: 0; padding: 18px 20px; border-bottom: 1px solid var(--line); font-size: 15px; }
