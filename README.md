@@ -1,25 +1,15 @@
-Typing practice tool using epub as text source.
+# EpubTyper
 
-Required features:
-- [x] display special text properly, or close to properly.
-- [x] typing progress saving
-- [x] load epubs
-- [x] web UI
-- [x] page with typing speed stats
-- [x] skip configurable whitespace and non-QWERTY source characters while preserving the original display text. For now target is English with a standard English keyboard.
+Book typing practice tool. [Website](https://andrei-akopian.github.io/EpubTyper)
 
-## Sample implementation
+Made by GPT-5.6 Luna using pure HTML+JS+CSS and `epub.js` library.
 
-This repository is a client-side prototype with no build step. It starts with a short sample book and accepts standard `.epub` files through the **Load an EPUB** control. EPUB files are opened locally in the browser; no book content is uploaded.
+## Alternatives
 
-Run it from the project directory with any static file server, for example:
+## Basic Dev setup
 
-```sh
-python3 -m http.server 4173
+```bash
+git clone https://github.com/andrei-akopian/EpubTyper
+cd EpubTyper
+open index.html
 ```
-
-Then open `http://localhost:4173`.
-
-The prototype stores typing position, session history, and stats in `localStorage`. EPUB loading and spine handling use the pinned `epub.js@0.3.93` browser build from jsDelivr, with its required pinned `JSZip@3.10.1` dependency loaded first.
-
-The Settings view controls passage colors, the editable non-skip charset, keyboard-layout presets, and whether characters outside the charset, line breaks, tabs, and repeated spaces are skipped.
