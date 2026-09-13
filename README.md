@@ -8,8 +8,11 @@ Made by GPT-5.6 Luna using pure HTML+JS+CSS and `epub.js` library.
 
 ## Basic Dev setup
 
+Because the code is split into ES modules, the site must be served over HTTP (not opened from `file://`).
+
 ```bash
 git clone https://github.com/andrei-akopian/EpubTyper
 cd EpubTyper
-open index.html
+python -m http.server 8000
+# open http://localhost:8000
 ```

@@ -30,7 +30,7 @@
           <button class="mode-button" data-view="stats" role="tab" aria-selected="false">Stats</button>
           <button class="mode-button" data-view="settings" role="tab" aria-selected="false">Settings</button>
         </nav>
-        <button class="sidebar-practice-heading is-active" data-view="practice" type="button">Practice</button>
+        <button class="sidebar-practice-heading is-active" data-view="practice" type="button" role="tab" aria-selected="true">Practice</button>
         <div class="practice-library">
           <div class="book-list" id="book-list"></div>
           <label class="upload-button sidebar-footer" id="upload-dropzone" for="epub-input">
@@ -64,7 +64,7 @@
               </div>
             </div>
 
-            <div class="typing-progress" aria-label="Typing progress">
+            <div class="typing-progress" id="typing-progress" role="progressbar" aria-label="Typing progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
               <span id="typing-progress-fill"></span>
             </div>
             <div class="passage-frame" id="typing-surface" tabindex="0" role="textbox" aria-label="Typing passage">
@@ -147,6 +147,6 @@
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="js/main.js"></script>
   </body>
 </html>
