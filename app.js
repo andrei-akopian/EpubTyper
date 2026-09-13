@@ -1,6 +1,10 @@
 const STORAGE_KEY = 'epubtyper-state-v3';
 const HISTORY_LIMIT = 200;
 const BOOK_PALETTE = ['#e9785d', '#2f6f7e', '#c4a35a', '#5b8a7a', '#6b7cb4', '#b85c8a', '#d4894a', '#17223b'];
+const CHARS_PER_WORD = 5;
+const MAX_KEY_GAP_MS = 2000;
+const SAME_MS_KEY_DELAY = 80;
+const WPM_EMA_ALPHA = 0.2;
 const COMMON_CHARSET = [
   'abcdefghijklmnopqrstuvwxyz',
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -78,6 +82,7 @@ const state = {
   settings: { ...DEFAULT_SETTINGS },
   currentChapter: 0,
   startedAt: null,
+  lastKeyAt: null,
   timerId: null,
   persistId: null,
   characterElements: [],
@@ -105,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     accuracyValue: document.querySelector('#accuracy-value'),
     timeValue: document.querySelector('#time-value'),
     liveWpm: document.querySelector('#live-wpm'),
-    liveRawWpm: document.querySelector('#live-raw-wpm'),
+    liveAvgWpm: document.querySelector('#live-avg-wpm'),
     toast: document.querySelector('#toast'),
     epubInput: document.querySelector('#epub-input'),
     uploadDropzone: document.querySelector('#upload-dropzone'),
@@ -125,8 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
     chapterResults: document.querySelector('#chapter-results'),
     chapterResultsTitle: document.querySelector('#chapter-results-title'),
     resultsWpm: document.querySelector('#results-wpm'),
+    resultsEmaWpm: document.querySelector('#results-ema-wpm'),
     resultsAccuracy: document.querySelector('#results-accuracy'),
-    resultsRawWpm: document.querySelector('#results-raw-wpm'),
     resultsTime: document.querySelector('#results-time'),
     chapterSpeedChart: document.querySelector('#chapter-speed-chart'),
     chapterAccuracyChart: document.querySelector('#chapter-accuracy-chart'),
@@ -495,6 +500,7 @@ function selectBook(bookId) {
   if (!book || book.id === state.book.id) return;
   hideChapterResults();
   stopTimer();
+  state.lastKeyAt = null;
   persist();
   state.book = book;
   state.currentChapter = Math.max(0, Math.min(Number(state.bookProgress[book.id]?.currentChapter) || 0, book.chapters.length - 1));
@@ -517,6 +523,7 @@ function selectChapter(index) {
   }
   hideChapterResults();
   stopTimer();
+  state.lastKeyAt = null;
   persist();
   state.currentChapter = index;
   persist();
@@ -578,6 +585,7 @@ function typeCharacter(character) {
     state.startedAt = Date.now();
     startTimer();
   }
+  const timing = takeKeyDelay();
   if (character === ' ' && characters[chapterState.position] !== ' ') {
     alignToNextSpace(characters, chapterState);
     if (chapterState.position >= characters.length) {
@@ -591,7 +599,7 @@ function typeCharacter(character) {
     chapterState.extraCharacters.push({ index: chapterState.position, character });
     chapterState.incorrectEvents += 1;
     chapterState.attempts += 1;
-    recordTypingEvent(chapterState, { at: Date.now(), index: chapterState.position, key: character, expected, skipped: 0, correct: false, extra: true });
+    recordTypingEvent(chapterState, { at: timing.at, delayMs: timing.delayMs, index: chapterState.position, key: character, expected, skipped: 0, correct: false, extra: true });
     renderChapter();
     renderBookProgress();
     persistSoon();
@@ -602,7 +610,7 @@ function typeCharacter(character) {
   setCharacterStatus(chapterState.position, isCorrect ? 'correct' : 'incorrect');
   if (isCorrect) chapterState.correctEvents += 1;
   else chapterState.incorrectEvents += 1;
-  recordTypingEvent(chapterState, { at: Date.now(), index: chapterState.position, key: character, expected, skipped: chapterState.position - before, correct: isCorrect });
+  recordTypingEvent(chapterState, { at: timing.at, delayMs: timing.delayMs, index: chapterState.position, key: character, expected, skipped: chapterState.position - before, correct: isCorrect });
   chapterState.position += 1;
   chapterState.attempts += 1;
   if (isCorrect) chapterState.correct += 1;
@@ -633,6 +641,23 @@ function alignToNextSpace(characters, chapterState) {
     index += 1;
   }
   chapterState.position = index;
+}
+
+function takeKeyDelay() {
+  const at = Date.now();
+  let delayMs = state.lastKeyAt ? at - state.lastKeyAt : 0;
+  if (!delayMs && state.lastKeyAt) delayMs = SAME_MS_KEY_DELAY;
+  state.lastKeyAt = at;
+  return { at, delayMs };
+}
+
+function capKeyDelay(delayMs, isFirst) {
+  if (isFirst) return 0;
+  return Math.min(Math.max(Number(delayMs) || 0, 0), MAX_KEY_GAP_MS);
+}
+
+function instantWpm(delayMs) {
+  return delayMs > 0 ? 60000 / delayMs / CHARS_PER_WORD : 0;
 }
 
 function recordTypingEvent(chapterState, event) {
@@ -685,6 +710,7 @@ function finishChapter() {
     bookTitle: state.book.title,
     chapterTitle: state.book.chapters[state.currentChapter].title,
     wpm: metrics.wpm,
+    emaWpm: metrics.emaWpm,
     rawWpm: metrics.rawWpm,
     accuracy: metrics.accuracy,
     characters: chapterState.attempts,
@@ -700,6 +726,7 @@ function finishChapter() {
 function resetChapter() {
   hideChapterResults();
   stopTimer();
+  state.lastKeyAt = null;
   const bookState = getBookState();
   bookState.chapters[state.currentChapter] = { position: 0, statuses: [], attempts: 0, correct: 0, correctEvents: 0, incorrectEvents: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0, extraCharacters: [] };
   state.startedAt = null;
@@ -718,12 +745,7 @@ function startTimer() {
 function stopTimer() {
   if (state.timerId) window.clearInterval(state.timerId);
   state.timerId = null;
-  if (state.startedAt) {
-    const chapterState = getChapterState();
-    chapterState.elapsedMs += Date.now() - state.startedAt;
-    state.startedAt = null;
-    persist();
-  }
+  state.startedAt = null;
   updateSessionMetrics();
 }
 
@@ -732,8 +754,8 @@ function updateSessionMetrics() {
   const chapterState = getChapterState();
   const metrics = getTypingMetrics(chapterState);
   const percent = characters.length ? (chapterState.position / characters.length) * 100 : 0;
-  els.liveWpm.textContent = metrics.wpm;
-  els.liveRawWpm.textContent = metrics.rawWpm;
+  els.liveWpm.textContent = metrics.emaWpm;
+  els.liveAvgWpm.textContent = metrics.wpm;
   els.accuracyValue.textContent = `${metrics.accuracy}%`;
   els.timeValue.textContent = formatTime(metrics.elapsedMs);
   els.characterCount.textContent = `${chapterState.position} / ${characters.length} characters`;
@@ -741,13 +763,16 @@ function updateSessionMetrics() {
 }
 
 function getTypingMetrics(chapterState) {
-  const elapsedMs = chapterState.elapsedMs + (state.startedAt ? Date.now() - state.startedAt : 0);
-  const durationMinutes = elapsedMs / 60000;
-  const wpm = durationMinutes > 0 ? Math.round((chapterState.correct / 5) / durationMinutes) : 0;
-  const rawWpm = durationMinutes > 0 ? Math.round((chapterState.attempts / 5) / durationMinutes) : 0;
+  const analysis = analyzeKeystrokes(chapterState);
   const totalEvents = chapterState.correctEvents + chapterState.incorrectEvents;
-  const accuracy = totalEvents ? Math.round((chapterState.correctEvents / totalEvents) * 100) : 0;
-  return { elapsedMs, wpm, rawWpm, accuracy };
+  const accuracy = totalEvents ? Math.round((chapterState.correctEvents / totalEvents) * 100) : analysis.accuracy;
+  return {
+    elapsedMs: analysis.elapsedMs,
+    wpm: analysis.wpm,
+    emaWpm: analysis.emaWpm,
+    rawWpm: analysis.rawWpm,
+    accuracy
+  };
 }
 
 function setView(view) {
@@ -883,42 +908,84 @@ function getOrderedEvents(chapterState) {
   return events.slice(start).concat(events.slice(0, start));
 }
 
-function downsampleColumns(columns, maxPoints) {
-  const length = columns[0].length;
-  if (length <= maxPoints) return columns;
-  const step = (length - 1) / (maxPoints - 1);
-  return columns.map((column) => {
-    const sampled = [];
-    for (let index = 0; index < maxPoints; index += 1) sampled.push(column[Math.round(index * step)]);
-    return sampled;
-  });
+function eventDelayMs(event, previousAt, isFirst) {
+  if (isFirst) return 0;
+  const raw = event.delayMs != null ? event.delayMs : (event.at && previousAt ? event.at - previousAt : 0);
+  return capKeyDelay(raw, false);
 }
 
-function buildChapterProgressSeries(chapterState) {
+function analyzeKeystrokes(chapterState) {
   const events = getOrderedEvents(chapterState);
-  if (events.length < 2) return null;
-  const startedAt = events[0].at;
+  let typedMs = 0;
+  let previousAt = 0;
   let correctKeys = 0;
   let totalKeys = 0;
   let correctChars = 0;
+  let ema = 0;
+  let lastWords = 0;
   const xs = [];
-  const wpm = [];
-  const accuracy = [];
+  const emaSeries = [];
+  const avgSeries = [];
+  const accuracySeries = [];
+  const missSeries = [];
   events.forEach((event, index) => {
+    const delay = eventDelayMs(event, previousAt, index === 0);
+    typedMs += delay;
+    if (event.at) previousAt = event.at;
     totalKeys += 1;
     if (event.correct) {
       correctKeys += 1;
       if (!event.extra) correctChars += 1;
     }
-    const elapsedMs = event.at - startedAt;
-    if (elapsedMs < 1000 && index !== events.length - 1) return;
-    const minutes = Math.max(elapsedMs, 1) / 60000;
-    xs.push(elapsedMs / 1000);
-    wpm.push((correctChars / 5) / minutes);
-    accuracy.push((correctKeys / totalKeys) * 100);
+    const inst = instantWpm(delay);
+    if (inst) ema = ema ? WPM_EMA_ALPHA * inst + (1 - WPM_EMA_ALPHA) * ema : inst;
+    const words = Math.max(lastWords + 0.05, (Number(event.index) + 1) / CHARS_PER_WORD);
+    lastWords = words;
+    const minutes = typedMs / 60000;
+    const accuracy = (correctKeys / totalKeys) * 100;
+    xs.push(words);
+    emaSeries.push(ema || null);
+    avgSeries.push(minutes > 0 ? (correctChars / CHARS_PER_WORD) / minutes : null);
+    accuracySeries.push(accuracy);
+    missSeries.push(event.correct ? null : accuracy);
   });
-  if (xs.length < 2) return null;
-  return downsampleColumns([xs, wpm, accuracy], 240);
+  const minutes = typedMs / 60000;
+  return {
+    elapsedMs: typedMs,
+    wpm: minutes > 0 ? Math.round((correctChars / CHARS_PER_WORD) / minutes) : 0,
+    rawWpm: minutes > 0 ? Math.round((totalKeys / CHARS_PER_WORD) / minutes) : 0,
+    emaWpm: Math.round(ema),
+    accuracy: totalKeys ? Math.round((correctKeys / totalKeys) * 100) : 0,
+    series: xs.length ? { xs, emaSeries, avgSeries, accuracySeries, missSeries } : null
+  };
+}
+
+function sampleProgressSeries(series, maxPoints) {
+  const length = series.xs.length;
+  if (length <= maxPoints) return series;
+  const keep = new Set([0, length - 1]);
+  series.missSeries.forEach((value, index) => {
+    if (value != null) keep.add(index);
+  });
+  const step = (length - 1) / (maxPoints - 1);
+  for (let index = 0; index < maxPoints; index += 1) keep.add(Math.round(index * step));
+  const indexes = [...keep].sort((a, b) => a - b);
+  return {
+    xs: indexes.map((index) => series.xs[index]),
+    emaSeries: indexes.map((index) => series.emaSeries[index]),
+    avgSeries: indexes.map((index) => series.avgSeries[index]),
+    accuracySeries: indexes.map((index) => series.accuracySeries[index]),
+    missSeries: indexes.map((index) => series.missSeries[index])
+  };
+}
+
+function accuracyYRange(values) {
+  const numbers = values.filter((value) => Number.isFinite(value));
+  if (!numbers.length) return [90, 100];
+  const min = Math.min(...numbers);
+  if (min >= 100) return [95, 100];
+  const pad = Math.max(2, (100 - min) * 0.2);
+  return [Math.max(0, Math.floor(min - pad)), 100];
 }
 
 function renderChapterResultCharts() {
@@ -928,26 +995,31 @@ function renderChapterResultCharts() {
   if (state.plots.chapterSpeed && state.plots.chapterSpeed.width === width) return;
   destroyPlot('chapterSpeed');
   destroyPlot('chapterAccuracy');
-  const series = buildChapterProgressSeries(getChapterState());
-  if (!series) return;
-  const [xs, wpm, accuracy] = series;
-  const showPoints = xs.length < 12;
-  state.plots.chapterSpeed = createUPlot(els.chapterSpeedChart, [xs, wpm], [
+  const analysis = analyzeKeystrokes(getChapterState());
+  if (!analysis.series) return;
+  const series = sampleProgressSeries(analysis.series, 240);
+  const showPoints = series.xs.length < 12;
+  const wordAxis = { values: (u, splits) => splits.map((value) => String(Math.round(value))) };
+  state.plots.chapterSpeed = createUPlot(els.chapterSpeedChart, [series.xs, series.avgSeries, series.emaSeries], [
     {},
-    { label: 'wpm', stroke: '#e9785d', width: 2, points: { show: showPoints, size: 5, width: 0 } }
+    { label: 'avg', stroke: '#2f6f7e', width: 2, points: { show: showPoints, size: 5, width: 0 } },
+    { label: 'ema', stroke: '#e9785d', width: 2, points: { show: showPoints, size: 5, width: 0 } }
   ], {
     height: 180,
+    legend: true,
     scales: { y: { range: (u, min, max) => [0, Math.max((Number.isFinite(max) ? max : 0) * 1.15, 20)] } },
-    xAxis: { values: (u, splits) => splits.map((value) => formatTime(value * 1000)) },
+    xAxis: wordAxis,
     yAxis: { values: (u, splits) => splits.map((value) => String(Math.round(value))) }
   });
-  state.plots.chapterAccuracy = createUPlot(els.chapterAccuracyChart, [xs, accuracy], [
+  state.plots.chapterAccuracy = createUPlot(els.chapterAccuracyChart, [series.xs, series.accuracySeries, series.missSeries], [
     {},
-    { label: 'accuracy', stroke: '#2f6f7e', width: 2, points: { show: showPoints, size: 5, width: 0 } }
+    { label: 'accuracy', stroke: '#2f6f7e', width: 2, points: { show: false } },
+    { label: 'mistakes', stroke: '#e9785d', width: 0, paths: () => null, points: { show: true, size: 6, width: 0, fill: '#e9785d' } }
   ], {
     height: 180,
-    scales: { y: { range: [0, 100] } },
-    xAxis: { values: (u, splits) => splits.map((value) => formatTime(value * 1000)) },
+    legend: true,
+    scales: { y: { range: accuracyYRange(series.accuracySeries) } },
+    xAxis: wordAxis,
     yAxis: { values: (u, splits) => splits.map((value) => `${Math.round(value)}%`) }
   });
 }
@@ -956,7 +1028,7 @@ function showChapterResults(metrics) {
   const chapter = state.book.chapters[state.currentChapter];
   els.chapterResultsTitle.textContent = chapter.title;
   els.resultsWpm.textContent = metrics.wpm;
-  els.resultsRawWpm.textContent = metrics.rawWpm;
+  els.resultsEmaWpm.textContent = metrics.emaWpm;
   els.resultsAccuracy.textContent = `${metrics.accuracy}%`;
   els.resultsTime.textContent = formatTime(metrics.elapsedMs);
   els.chapterResultsNext.hidden = state.currentChapter >= state.book.chapters.length - 1;
