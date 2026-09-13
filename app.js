@@ -1,4 +1,6 @@
 const STORAGE_KEY = 'epubtyper-state-v3';
+const HISTORY_LIMIT = 200;
+const BOOK_PALETTE = ['#e9785d', '#2f6f7e', '#c4a35a', '#5b8a7a', '#6b7cb4', '#b85c8a', '#d4894a', '#17223b'];
 const COMMON_CHARSET = [
   'abcdefghijklmnopqrstuvwxyz',
   'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -83,7 +85,8 @@ const state = {
   charsetSet: new Set(),
   bookProgressElements: new Map(),
   toastId: null,
-  fileDropDepth: 0
+  fileDropDepth: 0,
+  plots: {}
 };
 
 const els = {};
@@ -117,7 +120,18 @@ document.addEventListener('DOMContentLoaded', () => {
     averageAccuracy: document.querySelector('#average-accuracy'),
     sessionsFinished: document.querySelector('#sessions-finished'),
     charactersTyped: document.querySelector('#characters-typed'),
-    historyList: document.querySelector('#history-list'),
+    statsChart: document.querySelector('#stats-chart'),
+    statsChartEmpty: document.querySelector('#stats-chart-empty'),
+    chapterResults: document.querySelector('#chapter-results'),
+    chapterResultsTitle: document.querySelector('#chapter-results-title'),
+    resultsWpm: document.querySelector('#results-wpm'),
+    resultsAccuracy: document.querySelector('#results-accuracy'),
+    resultsRawWpm: document.querySelector('#results-raw-wpm'),
+    resultsTime: document.querySelector('#results-time'),
+    chapterSpeedChart: document.querySelector('#chapter-speed-chart'),
+    chapterAccuracyChart: document.querySelector('#chapter-accuracy-chart'),
+    chapterResultsClose: document.querySelector('#chapter-results-close'),
+    chapterResultsNext: document.querySelector('#chapter-results-next'),
     resetSettings: document.querySelector('#reset-settings')
   });
 
@@ -142,6 +156,16 @@ function bindEvents() {
   els.uploadDropzone.addEventListener('dragleave', () => els.uploadDropzone.classList.remove('is-dragging'));
   els.resetButton.addEventListener('click', resetChapter);
   els.resetSettings.addEventListener('click', resetSettings);
+  els.chapterResultsClose.addEventListener('click', hideChapterResults);
+  els.chapterResultsNext.addEventListener('click', openNextChapter);
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver(() => {
+      if (!els.statsView.hidden) renderStatsChart();
+    }).observe(els.statsChart);
+    new ResizeObserver(() => {
+      if (!els.chapterResults.hidden) renderChapterResultCharts();
+    }).observe(els.chapterResults);
+  }
   els.typingSurface.addEventListener('click', focusTyping);
   els.mobileCapture.addEventListener('input', handleMobileInput);
   document.addEventListener('keydown', handleKeydown);
@@ -469,6 +493,7 @@ function updateBookProgress(book, element) {
 function selectBook(bookId) {
   const book = state.books.find((candidate) => candidate.id === bookId);
   if (!book || book.id === state.book.id) return;
+  hideChapterResults();
   stopTimer();
   persist();
   state.book = book;
@@ -486,9 +511,11 @@ function selectChapterForBook(bookId, index) {
 
 function selectChapter(index) {
   if (index === state.currentChapter) {
+    hideChapterResults();
     focusTyping();
     return;
   }
+  hideChapterResults();
   stopTimer();
   persist();
   state.currentChapter = index;
@@ -504,6 +531,11 @@ function focusTyping() {
 }
 
 function handleKeydown(event) {
+  if (!els.chapterResults.hidden && event.key === 'Escape') {
+    event.preventDefault();
+    hideChapterResults();
+    return;
+  }
   if (document.activeElement !== els.typingSurface && document.activeElement !== els.mobileCapture) return;
   if (event.key === 'Escape') {
     stopTimer();
@@ -649,6 +681,7 @@ function finishChapter() {
   stopTimer();
   const metrics = getTypingMetrics(chapterState);
   state.history.unshift({
+    bookId: state.book.id,
     bookTitle: state.book.title,
     chapterTitle: state.book.chapters[state.currentChapter].title,
     wpm: metrics.wpm,
@@ -657,14 +690,15 @@ function finishChapter() {
     characters: chapterState.attempts,
     date: new Date().toISOString()
   });
-  state.history = state.history.slice(0, 20);
+  state.history = state.history.slice(0, HISTORY_LIMIT);
   persist();
   renderBookList();
   renderStats();
-  showToast('Chapter complete.');
+  showChapterResults(metrics);
 }
 
 function resetChapter() {
+  hideChapterResults();
   stopTimer();
   const bookState = getBookState();
   bookState.chapters[state.currentChapter] = { position: 0, statuses: [], attempts: 0, correct: 0, correctEvents: 0, incorrectEvents: 0, elapsedMs: 0, completed: false, events: [], eventCount: 0, extraCharacters: [] };
@@ -732,10 +766,11 @@ function setView(view) {
     if (button.hasAttribute('aria-pressed')) button.setAttribute('aria-pressed', active ? 'true' : 'false');
   });
   if (!practice) {
+    hideChapterResults();
     stopTimer();
     els.mobileCapture.blur();
-    renderStats();
   }
+  if (stats) requestAnimationFrame(renderStats);
 }
 
 function renderStats() {
@@ -746,7 +781,200 @@ function renderStats() {
   els.averageAccuracy.textContent = `${average}%`;
   els.sessionsFinished.textContent = completed.length;
   els.charactersTyped.textContent = completed.reduce((sum, item) => sum + item.characters, 0).toLocaleString();
-  els.historyList.innerHTML = completed.length ? completed.map((item) => `<div class="history-row"><div><strong>${escapeHtml(item.chapterTitle)}</strong><small>${escapeHtml(item.bookTitle)} · ${formatDate(item.date)}</small></div><span class="history-value">${item.wpm} wpm</span><span class="history-value">${item.rawWpm ?? item.wpm} raw</span><span class="history-value">${item.accuracy}% acc.</span></div>`).join('') : '<p class="empty-history">Finish a passage and it will appear here.</p>';
+  renderStatsChart(true);
+}
+
+function historyBookKey(item) {
+  return item.bookId || item.bookTitle || 'unknown';
+}
+
+function colorForKey(key) {
+  let hash = 2166136261;
+  for (let index = 0; index < key.length; index += 1) hash = Math.imul(hash ^ key.charCodeAt(index), 16777619);
+  return BOOK_PALETTE[(hash >>> 0) % BOOK_PALETTE.length];
+}
+
+function destroyPlot(key) {
+  state.plots[key]?.destroy();
+  state.plots[key] = null;
+}
+
+function createUPlot(target, data, series, options = {}) {
+  const width = Math.max(1, Math.floor(target.clientWidth));
+  return new uPlot({
+    width,
+    height: options.height || 220,
+    class: 'epub-uplot',
+    padding: [8, 12, 0, 0],
+    legend: { show: Boolean(options.legend) },
+    scales: options.scales || {},
+    axes: [
+      {
+        stroke: '#5b6477',
+        grid: { stroke: 'rgba(23, 34, 59, 0.12)' },
+        ticks: { stroke: 'rgba(23, 34, 59, 0.12)' },
+        font: '10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+        ...(options.xAxis || {})
+      },
+      {
+        stroke: '#5b6477',
+        grid: { stroke: 'rgba(23, 34, 59, 0.12)' },
+        ticks: { stroke: 'rgba(23, 34, 59, 0.12)' },
+        font: '10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+        ...(options.yAxis || {})
+      }
+    ],
+    series
+  }, data, target);
+}
+
+function renderStatsChart(force = false) {
+  if (els.statsView.hidden) return;
+  const sessions = state.history.filter((item) => item.date && Number.isFinite(item.wpm)).slice().sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
+  if (!sessions.length || typeof uPlot !== 'function') {
+    destroyPlot('stats');
+    els.statsChart.hidden = true;
+    els.statsChartEmpty.hidden = false;
+    return;
+  }
+  els.statsChartEmpty.hidden = true;
+  els.statsChart.hidden = false;
+  const width = Math.floor(els.statsChart.clientWidth);
+  if (width < 40) return;
+  if (!force && state.plots.stats && state.plots.stats.width === width) return;
+  destroyPlot('stats');
+  const groups = [];
+  const indexByKey = new Map();
+  sessions.forEach((item) => {
+    const key = historyBookKey(item);
+    if (indexByKey.has(key)) return;
+    indexByKey.set(key, groups.length);
+    groups.push({ key, label: item.bookTitle || 'Unknown book', color: colorForKey(key) });
+  });
+  const xs = sessions.map((item) => Date.parse(item.date) / 1000);
+  const data = [xs, ...groups.map((group) => sessions.map((item) => (historyBookKey(item) === group.key ? item.wpm : null)))];
+  const series = [
+    {},
+    ...groups.map((group) => ({
+      label: group.label,
+      stroke: group.color,
+      width: 2,
+      spanGaps: true,
+      points: { show: true, size: 7, width: 1, stroke: group.color, fill: group.color }
+    }))
+  ];
+  state.plots.stats = createUPlot(els.statsChart, data, series, {
+    height: 280,
+    legend: true,
+    scales: {
+      x: { time: true },
+      y: { range: (u, min, max) => [0, Math.max((Number.isFinite(max) ? max : 0) * 1.15, 20)] }
+    },
+    yAxis: { values: (u, splits) => splits.map((value) => String(Math.round(value))) }
+  });
+}
+
+function getOrderedEvents(chapterState) {
+  const events = chapterState.events || [];
+  if (!events.length) return [];
+  const count = chapterState.eventCount || events.length;
+  if (count <= events.length) return events.slice();
+  const start = count % events.length;
+  return events.slice(start).concat(events.slice(0, start));
+}
+
+function downsampleColumns(columns, maxPoints) {
+  const length = columns[0].length;
+  if (length <= maxPoints) return columns;
+  const step = (length - 1) / (maxPoints - 1);
+  return columns.map((column) => {
+    const sampled = [];
+    for (let index = 0; index < maxPoints; index += 1) sampled.push(column[Math.round(index * step)]);
+    return sampled;
+  });
+}
+
+function buildChapterProgressSeries(chapterState) {
+  const events = getOrderedEvents(chapterState);
+  if (events.length < 2) return null;
+  const startedAt = events[0].at;
+  let correctKeys = 0;
+  let totalKeys = 0;
+  let correctChars = 0;
+  const xs = [];
+  const wpm = [];
+  const accuracy = [];
+  events.forEach((event, index) => {
+    totalKeys += 1;
+    if (event.correct) {
+      correctKeys += 1;
+      if (!event.extra) correctChars += 1;
+    }
+    const elapsedMs = event.at - startedAt;
+    if (elapsedMs < 1000 && index !== events.length - 1) return;
+    const minutes = Math.max(elapsedMs, 1) / 60000;
+    xs.push(elapsedMs / 1000);
+    wpm.push((correctChars / 5) / minutes);
+    accuracy.push((correctKeys / totalKeys) * 100);
+  });
+  if (xs.length < 2) return null;
+  return downsampleColumns([xs, wpm, accuracy], 240);
+}
+
+function renderChapterResultCharts() {
+  if (els.chapterResults.hidden || typeof uPlot !== 'function') return;
+  const width = Math.floor(els.chapterSpeedChart.clientWidth);
+  if (width < 40) return;
+  if (state.plots.chapterSpeed && state.plots.chapterSpeed.width === width) return;
+  destroyPlot('chapterSpeed');
+  destroyPlot('chapterAccuracy');
+  const series = buildChapterProgressSeries(getChapterState());
+  if (!series) return;
+  const [xs, wpm, accuracy] = series;
+  const showPoints = xs.length < 12;
+  state.plots.chapterSpeed = createUPlot(els.chapterSpeedChart, [xs, wpm], [
+    {},
+    { label: 'wpm', stroke: '#e9785d', width: 2, points: { show: showPoints, size: 5, width: 0 } }
+  ], {
+    height: 180,
+    scales: { y: { range: (u, min, max) => [0, Math.max((Number.isFinite(max) ? max : 0) * 1.15, 20)] } },
+    xAxis: { values: (u, splits) => splits.map((value) => formatTime(value * 1000)) },
+    yAxis: { values: (u, splits) => splits.map((value) => String(Math.round(value))) }
+  });
+  state.plots.chapterAccuracy = createUPlot(els.chapterAccuracyChart, [xs, accuracy], [
+    {},
+    { label: 'accuracy', stroke: '#2f6f7e', width: 2, points: { show: showPoints, size: 5, width: 0 } }
+  ], {
+    height: 180,
+    scales: { y: { range: [0, 100] } },
+    xAxis: { values: (u, splits) => splits.map((value) => formatTime(value * 1000)) },
+    yAxis: { values: (u, splits) => splits.map((value) => `${Math.round(value)}%`) }
+  });
+}
+
+function showChapterResults(metrics) {
+  const chapter = state.book.chapters[state.currentChapter];
+  els.chapterResultsTitle.textContent = chapter.title;
+  els.resultsWpm.textContent = metrics.wpm;
+  els.resultsRawWpm.textContent = metrics.rawWpm;
+  els.resultsAccuracy.textContent = `${metrics.accuracy}%`;
+  els.resultsTime.textContent = formatTime(metrics.elapsedMs);
+  els.chapterResultsNext.hidden = state.currentChapter >= state.book.chapters.length - 1;
+  els.chapterResults.hidden = false;
+  requestAnimationFrame(() => requestAnimationFrame(renderChapterResultCharts));
+  els.chapterResultsClose.focus();
+}
+
+function hideChapterResults() {
+  if (els.chapterResults.hidden) return;
+  destroyPlot('chapterSpeed');
+  destroyPlot('chapterAccuracy');
+  els.chapterResults.hidden = true;
+}
+
+function openNextChapter() {
+  hideChapterResults();
+  if (state.currentChapter < state.book.chapters.length - 1) selectChapter(state.currentChapter + 1);
 }
 
 async function handleEpubUpload(file) {
@@ -756,6 +984,7 @@ async function handleEpubUpload(file) {
     els.epubInput.value = '';
     return;
   }
+  hideChapterResults();
   stopTimer();
   persist();
   try {
@@ -972,10 +1201,6 @@ function isFairCharacterAt(text, index) {
 function formatTime(milliseconds) {
   const seconds = Math.floor(milliseconds / 1000);
   return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
-}
-
-function formatDate(value) {
-  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(new Date(value));
 }
 
 function showToast(message) {

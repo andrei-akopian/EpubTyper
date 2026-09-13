@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#17223b" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <title>Epubtyper</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.min.css" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -73,6 +74,32 @@
             <input class="mobile-capture" id="mobile-capture" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Type the passage" />
           </div>
 
+          <div class="chapter-results" id="chapter-results" hidden>
+            <div class="chapter-results-card" role="dialog" aria-modal="true" aria-labelledby="chapter-results-title">
+              <p class="eyebrow">Chapter complete</p>
+              <h2 id="chapter-results-title">The first page</h2>
+              <div class="chapter-results-metrics">
+                <div><strong id="results-wpm">0</strong><span>wpm</span></div>
+                <div><strong id="results-accuracy">0%</strong><span>accuracy</span></div>
+                <div><strong id="results-raw-wpm">0</strong><span>raw wpm</span></div>
+                <div><strong id="results-time">00:00</strong><span>time</span></div>
+              </div>
+              <div class="chapter-results-charts">
+                <figure>
+                  <figcaption>Speed</figcaption>
+                  <div class="chapter-chart" id="chapter-speed-chart"></div>
+                </figure>
+                <figure>
+                  <figcaption>Accuracy</figcaption>
+                  <div class="chapter-chart" id="chapter-accuracy-chart"></div>
+                </figure>
+              </div>
+              <div class="chapter-results-actions">
+                <button type="button" class="chapter-results-primary" id="chapter-results-close">Continue</button>
+                <button type="button" class="chapter-results-secondary" id="chapter-results-next">Next chapter</button>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section class="view stats-view" id="stats-view" aria-labelledby="stats-heading" hidden>
@@ -84,9 +111,10 @@
             <article class="stat-card"><span class="stat-card-label">Sessions finished</span><strong id="sessions-finished">0</strong><span class="stat-card-unit">passages typed</span></article>
             <article class="stat-card"><span class="stat-card-label">Characters typed</span><strong id="characters-typed">0</strong><span class="stat-card-unit">including retries</span></article>
           </div>
-          <div class="history-card">
-            <div class="history-heading"><h2>Recent sessions</h2><span>stored locally</span></div>
-            <div class="history-list" id="history-list"><p class="empty-history">Finish a passage and it will appear here.</p></div>
+          <div class="stats-chart-card">
+            <div class="history-heading"><h2>Speed over time</h2><span>average wpm by book</span></div>
+            <div class="stats-chart" id="stats-chart" hidden></div>
+            <p class="empty-history" id="stats-chart-empty">Finish a passage and it will appear here.</p>
           </div>
         </section>
 
@@ -118,6 +146,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/epubjs@0.3.93/dist/epub.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uplot@1.6.32/dist/uPlot.iife.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
