@@ -42,13 +42,27 @@ export function setCharacterStatus(index, status) {
   if (status === 'incorrect') element.classList.add('is-incorrect');
 }
 
+function isInView(container, element) {
+  const containerRect = container.getBoundingClientRect();
+  const elementRect = element.getBoundingClientRect();
+  return (
+    elementRect.top >= containerRect.top + 4 &&
+    elementRect.bottom <= containerRect.bottom - 4 &&
+    elementRect.left >= containerRect.left + 4 &&
+    elementRect.right <= containerRect.right - 4
+  );
+}
+
 export function moveCursor(index) {
   if (state.currentCharacter >= 0) state.characterElements[state.currentCharacter]?.classList.remove('is-current');
   state.currentCharacter = index;
   if (index >= 0) {
     const element = state.characterElements[index];
     element?.classList.add('is-current');
-    element?.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+    const frame = element?.closest('.passage-frame');
+    if (frame && element && !isInView(frame, element)) {
+      element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+    }
   }
 }
 
@@ -62,5 +76,22 @@ export function appendPassageImages(fragment, images) {
     imageElement.loading = 'lazy';
     figure.appendChild(imageElement);
     fragment.appendChild(figure);
+  });
+}
+
+export function setExtraCharacters(index, extras) {
+  const element = state.characterElements[index];
+  if (!element) return;
+  let sibling = element.previousSibling;
+  while (sibling && sibling.nodeType === 1 && sibling.classList.contains('is-extra')) {
+    const toRemove = sibling;
+    sibling = sibling.previousSibling;
+    toRemove.remove();
+  }
+  extras.forEach((character) => {
+    const extraSpan = document.createElement('span');
+    extraSpan.className = 'is-extra is-incorrect';
+    extraSpan.textContent = character;
+    element.parentNode.insertBefore(extraSpan, element);
   });
 }

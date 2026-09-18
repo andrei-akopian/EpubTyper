@@ -21,8 +21,20 @@ export function instantWpm(delayMs) {
 export function recordTypingEvent(chapterState, event) {
   chapterState.events = chapterState.events || [];
   chapterState.eventCount = chapterState.eventCount || 0;
-  if (chapterState.events.length < 5000) chapterState.events.push(event);
-  else chapterState.events[chapterState.eventCount % 5000] = event;
+  chapterState.typedMs = chapterState.typedMs || 0;
+  chapterState.correctChars = chapterState.correctChars || 0;
+  chapterState.emaWpm = chapterState.emaWpm || 0;
+  const delay = capKeyDelay(event.delayMs, chapterState.eventCount === 0);
+  chapterState.typedMs += delay;
+  if (event.correct && !event.extra) chapterState.correctChars += 1;
+  const inst = instantWpm(delay);
+  if (inst) chapterState.emaWpm = chapterState.emaWpm ? WPM_EMA_ALPHA * inst + (1 - WPM_EMA_ALPHA) * chapterState.emaWpm : inst;
+  if (chapterState.events.length < 5000) {
+    chapterState.events.push(event);
+  } else {
+    chapterState.events[chapterState.eventCount % 5000] = event;
+    if (chapterState.eventCount % 5000 === 0) rebuildRunningMetrics(chapterState);
+  }
   chapterState.eventCount += 1;
 }
 
@@ -115,9 +127,39 @@ export function accuracyYRange(values) {
   return [Math.max(0, Math.floor(min - pad)), 100];
 }
 
+export function rebuildRunningMetrics(chapterState) {
+  chapterState.typedMs = 0;
+  chapterState.correctChars = 0;
+  chapterState.emaWpm = 0;
+  const events = getOrderedEvents(chapterState);
+  let previousAt = 0;
+  events.forEach((event, index) => {
+    const delay = eventDelayMs(event, previousAt, index === 0);
+    chapterState.typedMs += delay;
+    if (event.at) previousAt = event.at;
+    if (event.correct && !event.extra) chapterState.correctChars += 1;
+    const inst = instantWpm(delay);
+    if (inst) chapterState.emaWpm = chapterState.emaWpm ? WPM_EMA_ALPHA * inst + (1 - WPM_EMA_ALPHA) * chapterState.emaWpm : inst;
+  });
+}
+
 export function getTypingMetrics(chapterState) {
+  if (typeof chapterState.typedMs !== 'number' && (chapterState.events?.length || chapterState.eventCount)) {
+    rebuildRunningMetrics(chapterState);
+  }
+  if (typeof chapterState.typedMs === 'number') {
+    const minutes = chapterState.typedMs / 60000;
+    const totalEvents = (chapterState.correctEvents || 0) + (chapterState.incorrectEvents || 0);
+    return {
+      elapsedMs: chapterState.typedMs,
+      wpm: minutes > 0 ? Math.round((chapterState.correctChars / CHARS_PER_WORD) / minutes) : 0,
+      emaWpm: Math.round(chapterState.emaWpm || 0),
+      rawWpm: minutes > 0 ? Math.round((totalEvents / CHARS_PER_WORD) / minutes) : 0,
+      accuracy: totalEvents ? Math.round((chapterState.correctEvents / totalEvents) * 100) : 0
+    };
+  }
   const analysis = analyzeKeystrokes(chapterState);
-  const totalEvents = chapterState.correctEvents + chapterState.incorrectEvents;
+  const totalEvents = (chapterState.correctEvents || 0) + (chapterState.incorrectEvents || 0);
   const accuracy = totalEvents ? Math.round((chapterState.correctEvents / totalEvents) * 100) : analysis.accuracy;
   return {
     elapsedMs: analysis.elapsedMs,

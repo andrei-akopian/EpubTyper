@@ -2,7 +2,7 @@ import { HISTORY_LIMIT } from './config.js';
 import { state, persist, persistSoon, ensureBookState, ensureChapterState } from './state.js';
 import { getChapterCharacters } from './utils.js';
 import { takeKeyDelay, recordTypingEvent, getTypingMetrics } from './metrics.js';
-import { characterFromKey, isInputCharacter, isFairCharacterAt, advanceToFairCharacter, setCharacterStatus, moveCursor } from './passage.js';
+import { characterFromKey, isInputCharacter, isFairCharacterAt, advanceToFairCharacter, setCharacterStatus, moveCursor, setExtraCharacters } from './passage.js';
 import { renderChapter, renderBookProgress, updateSessionMetrics, showChapterResults, renderBookList, renderStats, startTimer, stopTimer } from './ui.js';
 
 export function refreshTypingPosition() {
@@ -14,7 +14,10 @@ export function refreshTypingPosition() {
   let lastTyped = -1;
   chapterState.statuses.forEach((status, index) => {
     if (status === 'correct' || status === 'incorrect') lastTyped = index;
-    if (status === 'skipped') chapterState.statuses[index] = undefined;
+    if (status === 'skipped') {
+      chapterState.statuses[index] = undefined;
+      setCharacterStatus(index, undefined);
+    }
   });
   chapterState.position = lastTyped + 1;
   const characters = getChapterCharacters(state.book, state.currentChapter);
@@ -22,8 +25,17 @@ export function refreshTypingPosition() {
     finishChapter();
     return;
   }
-  renderChapter();
+  advanceToFairCharacter(chapterState);
+  moveCursor(chapterState.position);
+  updateSessionMetrics();
   renderBookProgress();
+}
+
+function extrasAt(index) {
+  const chapterState = ensureChapterState();
+  return (chapterState.extraCharacters || [])
+    .filter((extra) => extra.index === index)
+    .map((extra) => extra.character);
 }
 
 export function typeCharacter(character) {
@@ -55,7 +67,7 @@ export function typeCharacter(character) {
     chapterState.incorrectEvents += 1;
     chapterState.attempts += 1;
     recordTypingEvent(chapterState, { at: timing.at, delayMs: timing.delayMs, index: chapterState.position, key: character, expected, skipped: 0, correct: false, extra: true });
-    renderChapter();
+    setExtraCharacters(chapterState.position, extrasAt(chapterState.position));
     renderBookProgress();
     persistSoon();
     return;
@@ -104,7 +116,7 @@ export function stepBack() {
   for (let index = chapterState.extraCharacters.length - 1; index >= 0; index -= 1) {
     if (chapterState.extraCharacters[index].index === chapterState.position) {
       chapterState.extraCharacters.splice(index, 1);
-      renderChapter();
+      setExtraCharacters(chapterState.position, extrasAt(chapterState.position));
       renderBookProgress();
       persistSoon();
       return;

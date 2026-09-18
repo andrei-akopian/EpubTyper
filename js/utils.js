@@ -68,8 +68,20 @@ export function colorForKey(key) {
   return BOOK_PALETTE[(hash >>> 0) % BOOK_PALETTE.length];
 }
 
+const chapterCharacterCache = new WeakMap();
+
 export function getChapterCharacters(book, index) {
-  return [...book.chapters[index].text];
+  const chapter = book.chapters[index];
+  let characters = chapterCharacterCache.get(chapter);
+  if (!characters) {
+    characters = [...chapter.text];
+    chapterCharacterCache.set(chapter, characters);
+  }
+  return characters;
+}
+
+export function getChapterLength(book, index) {
+  return getChapterCharacters(book, index).length;
 }
 
 export function isCharsetCharacter(character, charsetSet) {

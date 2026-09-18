@@ -1,6 +1,6 @@
 import { state, persist, ensureChapterState } from './state.js';
 import { els } from './dom.js';
-import { escapeHtml, formatTime, getChapterCharacters, historyBookKey, colorForKey } from './utils.js';
+import { escapeHtml, formatTime, getChapterCharacters, getChapterLength, historyBookKey, colorForKey } from './utils.js';
 import { appendPassageImages, advanceToFairCharacter, moveCursor, setCharacterStatus } from './passage.js';
 import { analyzeKeystrokes, sampleProgressSeries, accuracyYRange, getTypingMetrics } from './metrics.js';
 
@@ -118,9 +118,9 @@ export function renderBookProgress() {
 
 export function updateBookProgress(book, element) {
   if (!element) return;
-  const total = book.chapters.reduce((sum, chapter) => sum + [...chapter.text].length, 0);
-  const completed = book.chapters.reduce((sum, chapter, index) => {
-    const length = [...chapter.text].length;
+  const total = book.chapters.reduce((sum, _, index) => sum + getChapterLength(book, index), 0);
+  const completed = book.chapters.reduce((sum, _, index) => {
+    const length = getChapterLength(book, index);
     return sum + Math.min(state.bookProgress[book.id]?.chapters?.[index]?.position || 0, length);
   }, 0);
   element.textContent = `${total ? Math.round((completed / total) * 100) : 0}%`;
