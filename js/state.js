@@ -19,7 +19,9 @@ export const state = {
   bookProgressElements: new Map(),
   toastId: null,
   fileDropDepth: 0,
-  plots: {}
+  plots: {},
+  cursorObserver: null,
+  cursorNeedsScroll: false
 };
 
 export function loadState() {

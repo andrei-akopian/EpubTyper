@@ -42,27 +42,44 @@ export function setCharacterStatus(index, status) {
   if (status === 'incorrect') element.classList.add('is-incorrect');
 }
 
-function isInView(container, element) {
-  const containerRect = container.getBoundingClientRect();
-  const elementRect = element.getBoundingClientRect();
-  return (
-    elementRect.top >= containerRect.top + 4 &&
-    elementRect.bottom <= containerRect.bottom - 4 &&
-    elementRect.left >= containerRect.left + 4 &&
-    elementRect.right <= containerRect.right - 4
-  );
+function ensureCursorObserver() {
+  if (state.cursorObserver) return state.cursorObserver;
+  const frame = document.querySelector('.passage-frame');
+  if (!frame) return null;
+  state.cursorObserver = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const currentElement = state.characterElements[state.currentCharacter];
+      if (entry.target !== currentElement) return;
+      if (!entry.isIntersecting && state.cursorNeedsScroll) {
+        entry.target.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+      }
+      state.cursorNeedsScroll = false;
+    });
+  }, { root: frame, threshold: 1, rootMargin: '-4px' });
+  return state.cursorObserver;
 }
 
 export function moveCursor(index) {
-  if (state.currentCharacter >= 0) state.characterElements[state.currentCharacter]?.classList.remove('is-current');
+  const observer = ensureCursorObserver();
+  if (state.currentCharacter >= 0) {
+    const previous = state.characterElements[state.currentCharacter];
+    previous?.classList.remove('is-current');
+    if (observer && previous) observer.unobserve(previous);
+  }
   state.currentCharacter = index;
   if (index >= 0) {
     const element = state.characterElements[index];
     element?.classList.add('is-current');
-    const frame = element?.closest('.passage-frame');
-    if (frame && element && !isInView(frame, element)) {
-      element.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'auto' });
+    if (observer && element) {
+      state.cursorNeedsScroll = true;
+      observer.observe(element);
     }
+  }
+}
+
+export function unobserveCurrentCharacter() {
+  if (state.cursorObserver && state.currentCharacter >= 0) {
+    state.cursorObserver.unobserve(state.characterElements[state.currentCharacter]);
   }
 }
 

@@ -1,7 +1,7 @@
 import { state, persist, ensureChapterState } from './state.js';
 import { els } from './dom.js';
 import { escapeHtml, formatTime, getChapterCharacters, getChapterLength, historyBookKey, colorForKey } from './utils.js';
-import { appendPassageImages, advanceToFairCharacter, moveCursor, setCharacterStatus } from './passage.js';
+import { appendPassageImages, advanceToFairCharacter, moveCursor, setCharacterStatus, unobserveCurrentCharacter } from './passage.js';
 import { analyzeKeystrokes, sampleProgressSeries, accuracyYRange, getTypingMetrics } from './metrics.js';
 
 export function applySettings() {
@@ -68,6 +68,7 @@ export function renderChapter() {
   const characters = getChapterCharacters(state.book, state.currentChapter);
   els.chapterKicker.textContent = `Chapter ${String(state.currentChapter + 1).padStart(2, '0')}`;
   els.chapterTitle.textContent = chapter.title;
+  unobserveCurrentCharacter();
   els.passage.replaceChildren();
   state.characterElements = [];
   state.currentCharacter = -1;
