@@ -78,8 +78,10 @@ export function moveCursor(index) {
 }
 
 export function unobserveCurrentCharacter() {
-  if (state.cursorObserver && state.currentCharacter >= 0) {
-    state.cursorObserver.unobserve(state.characterElements[state.currentCharacter]);
+  if (!state.cursorObserver || state.currentCharacter < 0) return;
+  const element = state.characterElements[state.currentCharacter];
+  if (element && element.nodeType === 1) {
+    state.cursorObserver.unobserve(element);
   }
 }
 
