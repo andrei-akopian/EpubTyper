@@ -98,7 +98,8 @@ export function renderChapter() {
     });
     const span = document.createElement('span');
     span.textContent = character;
-    if (index === 0 || characters[index - 1] === '\n') span.classList.add('is-paragraph-start');
+    if (character === '\n') span.classList.add('is-newline');
+    if (index === 0 || (characters[index - 1] === '\n' && character !== '\n')) span.classList.add('is-paragraph-start');
     while (emphasisRangeIndex < emphasisRanges.length && index >= emphasisRanges[emphasisRangeIndex].end) emphasisRangeIndex += 1;
     if (emphasisRanges[emphasisRangeIndex]?.start <= index) span.classList.add('is-emphasis');
     state.characterElements.push(span);
