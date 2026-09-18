@@ -113,7 +113,10 @@ export function extractDisplayText(body) {
   const images = [];
 
   function appendText(value, emphasized = false) {
-    [...value].forEach((character) => characters.push({ character, emphasized }));
+    [...value].forEach((character) => {
+      if (character === '\n' && characters.length > 0 && characters[characters.length - 1].character === '\n') return;
+      characters.push({ character, emphasized });
+    });
   }
 
   function collect(node, emphasized = false) {
