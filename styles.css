@@ -100,7 +100,7 @@ h1 { max-width: 580px; margin: 0; font: 500 clamp(36px, 5vw, 62px)/1.03 var(--fo
 .typing-progress span { display: block; width: 0; height: 100%; background: var(--coral); transition: width .16s ease; }
 .passage-frame { position: relative; min-height: 238px; padding: 2px 0 5px; cursor: text; }
 .practice-view .passage-frame { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; }
-.passage { color: var(--remaining-color); font: 400 clamp(21px, 2.5vw, 30px)/1.75 var(--font-sans); letter-spacing: -.012em; white-space: pre-wrap; }
+.passage { color: var(--remaining-color); font: 400 clamp(21px, 2.5vw, 30px)/1.55 var(--font-sans); letter-spacing: -.012em; white-space: pre-wrap; }
 .passage-image { margin: 1.5em 0; text-align: center; }
 .passage-image img { display: block; width: auto; max-width: 100%; max-height: 70vh; margin: 0 auto; object-fit: contain; }
 .passage span.is-paragraph-start { margin-left: 1.25em; }
