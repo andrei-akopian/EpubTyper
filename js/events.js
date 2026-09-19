@@ -126,12 +126,27 @@ function handleCharsetInput(event) {
 }
 
 function handleKeydown(event) {
-  if (!els.chapterResults.hidden && event.key === 'Escape') {
-    event.preventDefault();
-    hideChapterResults();
+  if (!els.chapterResults.hidden) {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      hideChapterResults();
+      return;
+    }
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      openNextChapter();
+      return;
+    }
     return;
   }
   if (document.activeElement !== els.typingSurface && document.activeElement !== els.mobileCapture) return;
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 's') {
+    event.preventDefault();
+    persist();
+    showToast('Progress saved.');
+    return;
+  }
+  if (event.metaKey || event.ctrlKey) return;
   if (event.key === 'Escape') {
     event.preventDefault();
     stopTimer();
