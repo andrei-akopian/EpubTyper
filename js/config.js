@@ -12,6 +12,7 @@ export const COMMON_CHARSET = [
   " !\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~"
 ].join('');
 export const MIN_CHAPTER_CHARACTERS = 80;
+export const MAX_CHAPTER_CHARACTERS = 20000;
 export const CHARSET_PRESETS = {
   qwerty: COMMON_CHARSET,
   azerty: `${COMMON_CHARSET}àâäæçéèêëîïôœöùûüÿÀÂÄÆÇÉÈÊËÎÏÔŒÖÙÛÜŸ`,

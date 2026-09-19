@@ -202,6 +202,10 @@ async function handleEpubUpload(file) {
     const book = await parseEpub(file, buffer, hash, remembered?.id);
     const existingIndex = state.books.findIndex((candidate) => candidate.id === book.id);
     const oldBook = existingIndex >= 0 ? state.books[existingIndex] : null;
+    if (remembered && remembered.chapterCount && remembered.chapterCount !== book.chapters.length) {
+      delete state.bookProgress[book.id];
+      state.currentChapter = 0;
+    }
     if (existingIndex >= 0) {
       state.books[existingIndex] = book;
     } else {
