@@ -149,6 +149,7 @@ kbd { padding: 3px 5px; border: 1px solid #d9d7d0; color: var(--ink-soft); font:
 .chapter-results-primary, .chapter-results-secondary { padding: 9px 14px; border: 1px solid var(--ink); cursor: pointer; font: 11px var(--font-mono); }
 .chapter-results-primary { color: #fffefa; background: var(--ink); }
 .chapter-results-primary:hover { background: #243250; }
+#chapter-results-close:focus-visible { outline: none; }
 .chapter-results-secondary { color: var(--ink); background: transparent; }
 .chapter-results-secondary:hover { border-color: var(--coral); color: var(--coral); }
 .chapter-results-secondary[hidden] { display: none; }
