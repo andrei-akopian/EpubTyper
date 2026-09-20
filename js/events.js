@@ -1,7 +1,7 @@
 import { DEFAULT_SETTINGS, CHARSET_PRESETS } from './config.js';
 import { state, persist, persistSoon } from './state.js';
 import { els } from './dom.js';
-import { hashArrayBuffer } from './utils.js';
+import { hashArrayBuffer, SAMPLE_BOOK } from './utils.js';
 import { applySettings, renderBook, focusTyping, showToast, setView, hideChapterResults, stopTimer, selectBook, selectChapter, renderStatsChart, renderChapterResultCharts } from './ui.js';
 import { typeCharacter, stepBack, resetChapter, refreshTypingPosition, handleKeyCharacter } from './typing.js';
 import { isInputCharacter } from './passage.js';
@@ -26,6 +26,7 @@ export function bindEvents() {
   els.resetSettings.addEventListener('click', resetSettings);
   els.chapterResultsClose.addEventListener('click', hideChapterResults);
   els.chapterResultsNext.addEventListener('click', openNextChapter);
+  els.mobileWarningDismiss?.addEventListener('click', () => els.mobileWarning.classList.add('is-dismissed'));
   if (typeof ResizeObserver === 'function') {
     new ResizeObserver(() => {
       if (!els.statsView.hidden) renderStatsChart();
@@ -210,6 +211,11 @@ async function handleEpubUpload(file) {
       state.books[existingIndex] = book;
     } else {
       state.books.push(book);
+    }
+    const sampleIndex = state.books.findIndex((candidate) => candidate.id === SAMPLE_BOOK.id);
+    if (sampleIndex >= 0) {
+      state.books.splice(sampleIndex, 1);
+      delete state.bookProgress[SAMPLE_BOOK.id];
     }
     state.book = book;
     state.currentChapter = Math.max(0, Math.min(Number(state.bookProgress[book.id]?.currentChapter) || 0, book.chapters.length - 1));

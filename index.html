@@ -10,6 +10,14 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <div class="mobile-warning" id="mobile-warning" role="alertdialog" aria-labelledby="mobile-warning-title" aria-describedby="mobile-warning-text">
+      <div class="mobile-warning-card">
+        <p class="eyebrow">Heads up</p>
+        <h2 id="mobile-warning-title">EpubTyper needs a keyboard</h2>
+        <p id="mobile-warning-text">This is a typing trainer built for desktop screens and physical keyboards. On phones and small touch devices the layout and the typing experience do not work well.</p>
+        <button type="button" class="mobile-warning-dismiss" id="mobile-warning-dismiss">Continue anyway</button>
+      </div>
+    </div>
     <div class="file-drop-overlay" id="file-drop-overlay" aria-hidden="true">
       <div class="file-drop-prompt">
         <span class="file-drop-icon" aria-hidden="true">+</span>

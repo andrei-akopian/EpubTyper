@@ -29,9 +29,10 @@ export async function parseEpub(file, buffer, hash, existingId) {
     for (const section of book.spine.spineItems) {
       if (!section.linear || (section.properties || []).includes('nav')) continue;
       const contents = await section.load(book.load.bind(book));
-      const body = contents.querySelector('body') || contents.documentElement || contents;
+      const doc = contents.nodeType === 9 ? contents : (contents.ownerDocument || contents);
+      const body = contents.querySelector?.('body') || doc.documentElement || contents;
       const tocEntries = tocBySection.get(canonicalEpubHref(book, section.href)) || [];
-      for (const chunk of splitSectionChunks(contents, body, tocEntries)) {
+      for (const chunk of splitSectionChunks(doc, body, tocEntries)) {
         const displayText = extractDisplayText(chunk.root);
         const text = displayText.text;
         const images = await loadChapterImages(book, section, displayText.images);
@@ -81,18 +82,18 @@ export function flattenNavigation(items, result = []) {
   return result;
 }
 
-export function splitSectionChunks(contents, body, tocEntries) {
+export function splitSectionChunks(doc, body, tocEntries) {
   const sectionTitle = tocEntries.find((entry) => !entry.fragment)?.label?.trim()
-    || contents.querySelector('h1, h2, h3')?.textContent.replace(/\s+/g, ' ').trim()
+    || doc.querySelector('h1, h2, h3')?.textContent.replace(/\s+/g, ' ').trim()
     || '';
-  const anchors = resolveTocAnchors(contents, tocEntries);
+  const anchors = resolveTocAnchors(doc, tocEntries);
   let chunks;
   if (anchors.length >= 2) {
-    chunks = splitAtBoundaries(contents, body, anchors, sectionTitle);
+    chunks = splitAtBoundaries(doc, body, anchors, sectionTitle);
   } else {
-    chunks = splitAtHeadings(contents, body, anchors[0]?.label || sectionTitle);
+    chunks = splitAtHeadings(doc, body, anchors[0]?.label || sectionTitle);
   }
-  return chunks.flatMap((chunk) => splitOversizedChunk(contents, chunk));
+  return chunks.flatMap((chunk) => splitOversizedChunk(doc, chunk));
 }
 
 export function groupTocBySection(book, toc) {
@@ -117,12 +118,12 @@ function safeDecode(value) {
   }
 }
 
-export function resolveTocAnchors(contents, tocEntries) {
+export function resolveTocAnchors(doc, tocEntries) {
   const anchors = [];
   const seen = new Set();
   tocEntries.forEach((entry) => {
     if (!entry.fragment || seen.has(entry.fragment)) return;
-    const element = contents.getElementById?.(entry.fragment) || contents.querySelector?.(`[id="${CSS.escape(entry.fragment)}"]`);
+    const element = doc.getElementById?.(entry.fragment) || doc.querySelector?.(`[id="${CSS.escape(entry.fragment)}"]`);
     if (!element) return;
     seen.add(entry.fragment);
     anchors.push({ element, label: entry.label || element.textContent.replace(/\s+/g, ' ').trim().slice(0, 120) });
@@ -131,20 +132,20 @@ export function resolveTocAnchors(contents, tocEntries) {
   return anchors;
 }
 
-export function splitAtBoundaries(contents, body, anchors, preambleTitle) {
+export function splitAtBoundaries(doc, body, anchors, preambleTitle) {
   const firstTitle = preambleTitle === anchors[0].label ? '' : preambleTitle;
-  const chunks = [{ title: firstTitle, root: sliceRange(contents, body, null, anchors[0].element), split: true }];
+  const chunks = [{ title: firstTitle, root: sliceRange(doc, body, null, anchors[0].element), split: true }];
   anchors.forEach((anchor, index) => {
-    chunks.push({ title: anchor.label, root: sliceRange(contents, body, anchor.element, anchors[index + 1]?.element || null), split: true });
+    chunks.push({ title: anchor.label, root: sliceRange(doc, body, anchor.element, anchors[index + 1]?.element || null), split: true });
   });
   return chunks;
 }
 
-export function splitAtHeadings(contents, body, fallbackTitle) {
+export function splitAtHeadings(doc, body, fallbackTitle) {
   if (measureText(body) <= MAX_CHAPTER_CHARACTERS) return [{ title: fallbackTitle, root: body }];
   const anchors = findHeadingAnchors(body);
   if (anchors.length < 2) return [{ title: fallbackTitle, root: body }];
-  return splitAtBoundaries(contents, body, anchors, fallbackTitle);
+  return splitAtBoundaries(doc, body, anchors, fallbackTitle);
 }
 
 export function findHeadingAnchors(body) {
@@ -161,8 +162,8 @@ export function findHeadingAnchors(body) {
     .map((element) => ({ element, label: element.textContent.replace(/\s+/g, ' ').trim().slice(0, 120) || 'Untitled' }));
 }
 
-export function sliceRange(contents, body, startNode, endNode) {
-  const range = contents.createRange();
+export function sliceRange(doc, body, startNode, endNode) {
+  const range = doc.createRange();
   if (startNode) range.setStartBefore(startNode);
   else range.setStart(body, 0);
   if (endNode) range.setEndBefore(endNode);
@@ -170,19 +171,19 @@ export function sliceRange(contents, body, startNode, endNode) {
   return range.cloneContents();
 }
 
-export function splitOversizedChunk(contents, chunk) {
+export function splitOversizedChunk(doc, chunk) {
   if (measureText(chunk.root) <= MAX_CHAPTER_CHARACTERS) return [chunk];
   const blocks = [];
   collectBlocks(chunk.root, blocks);
   if (blocks.length < 2) return [chunk];
   const parts = [];
-  let current = contents.createDocumentFragment();
+  let current = doc.createDocumentFragment();
   let size = 0;
   blocks.forEach((block) => {
     const blockSize = measureText(block);
     if (size > 0 && size + blockSize > MAX_CHAPTER_CHARACTERS) {
       parts.push(current);
-      current = contents.createDocumentFragment();
+      current = doc.createDocumentFragment();
       size = 0;
     }
     current.appendChild(block);

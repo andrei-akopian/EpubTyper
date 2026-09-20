@@ -20,6 +20,8 @@ export function cacheElements() {
     epubInput: document.querySelector('#epub-input'),
     uploadDropzone: document.querySelector('#upload-dropzone'),
     fileDropOverlay: document.querySelector('#file-drop-overlay'),
+    mobileWarning: document.querySelector('#mobile-warning'),
+    mobileWarningDismiss: document.querySelector('#mobile-warning-dismiss'),
     resetButton: document.querySelector('#reset-button'),
     practiceView: document.querySelector('#practice-view'),
     statsView: document.querySelector('#stats-view'),
