@@ -63,9 +63,12 @@
                   <div><strong id="live-avg-wpm">0</strong><span>avg wpm</span></div>
                   <div><strong id="time-value">00:00</strong><span>time</span></div>
                 </div>
-                <button class="text-button session-reset" id="reset-button" type="button">Reset chapter <span aria-hidden="true">↺</span></button>
+                <div class="session-toolbar-buttons">
+                  <button class="text-button session-skip-paragraph" id="skip-paragraph-button" type="button" title="Skip current paragraph (Alt+↓ or PageDown)">Skip paragraph <span aria-hidden="true">⏭</span></button>
+                  <button class="text-button session-reset" id="reset-button" type="button">Reset chapter <span aria-hidden="true">↺</span></button>
+                </div>
                 <div class="session-toolbar-meta">
-                  <span><kbd>esc</kbd> pause <span class="footer-divider">·</span> <kbd>backspace</kbd> go back</span>
+                  <span><kbd>esc</kbd> pause <span class="footer-divider">·</span> <kbd>backspace</kbd> go back <span class="footer-divider">·</span> <kbd>alt</kbd>+<kbd>↓</kbd> skip paragraph <span class="footer-divider">·</span> <kbd>click</kbd> move cursor</span>
                   <span id="character-count">0 / 0 characters</span>
                 </div>
               </div>

@@ -23,6 +23,7 @@ export function cacheElements() {
     mobileWarning: document.querySelector('#mobile-warning'),
     mobileWarningDismiss: document.querySelector('#mobile-warning-dismiss'),
     resetButton: document.querySelector('#reset-button'),
+    skipParagraphButton: document.querySelector('#skip-paragraph-button'),
     practiceView: document.querySelector('#practice-view'),
     statsView: document.querySelector('#stats-view'),
     settingsView: document.querySelector('#settings-view'),

@@ -3,7 +3,20 @@ import { state, persist, persistSoon } from './state.js';
 import { els } from './dom.js';
 import { hashArrayBuffer, SAMPLE_BOOK } from './utils.js';
 import { applySettings, renderBook, focusTyping, showToast, setView, hideChapterResults, stopTimer, selectBook, selectChapter, renderStatsChart, renderChapterResultCharts } from './ui.js';
-import { typeCharacter, stepBack, resetChapter, refreshTypingPosition, handleKeyCharacter } from './typing.js';
+import {
+  typeCharacter,
+  stepBack,
+  resetChapter,
+  refreshTypingPosition,
+  handleKeyCharacter,
+  moveToPosition,
+  moveByCharacters,
+  moveByWords,
+  skipParagraph,
+  previousParagraph,
+  moveToBeginningOfParagraph,
+  moveToEndOfParagraph
+} from './typing.js';
 import { isInputCharacter } from './passage.js';
 import { parseEpub, rememberBook, revokeBookImages } from './epub.js';
 
@@ -23,6 +36,10 @@ export function bindEvents() {
     resetChapter();
     focusTyping();
   });
+  els.skipParagraphButton?.addEventListener('click', () => {
+    skipParagraph();
+    focusTyping();
+  });
   els.resetSettings.addEventListener('click', resetSettings);
   els.chapterResultsClose.addEventListener('click', hideChapterResults);
   els.chapterResultsNext.addEventListener('click', openNextChapter);
@@ -35,7 +52,8 @@ export function bindEvents() {
       if (!els.chapterResults.hidden) renderChapterResultCharts();
     }).observe(els.chapterResults);
   }
-  els.typingSurface.addEventListener('click', focusTyping);
+  els.passage.addEventListener('click', handlePassageClick);
+  els.typingSurface.addEventListener('click', handleSurfaceClick);
   els.mobileCapture.addEventListener('input', handleMobileInput);
   document.addEventListener('keydown', handleKeydown);
   document.querySelectorAll('[data-view]').forEach((button) => {
@@ -147,6 +165,58 @@ function handleKeydown(event) {
     showToast('Progress saved.');
     return;
   }
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    if (event.altKey || event.ctrlKey || event.metaKey) {
+      moveByWords(-1);
+    } else {
+      moveByCharacters(-1);
+    }
+    return;
+  }
+  if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    if (event.altKey || event.ctrlKey || event.metaKey) {
+      moveByWords(1);
+    } else {
+      moveByCharacters(1);
+    }
+    return;
+  }
+  if (event.key === 'ArrowDown') {
+    if (event.altKey || event.ctrlKey) {
+      event.preventDefault();
+      skipParagraph();
+      return;
+    }
+  }
+  if (event.key === 'ArrowUp') {
+    if (event.altKey || event.ctrlKey) {
+      event.preventDefault();
+      previousParagraph();
+      return;
+    }
+  }
+  if (event.key === 'PageDown') {
+    event.preventDefault();
+    skipParagraph();
+    return;
+  }
+  if (event.key === 'PageUp') {
+    event.preventDefault();
+    previousParagraph();
+    return;
+  }
+  if (event.key === 'Home') {
+    event.preventDefault();
+    moveToBeginningOfParagraph();
+    return;
+  }
+  if (event.key === 'End') {
+    event.preventDefault();
+    moveToEndOfParagraph();
+    return;
+  }
   if (event.metaKey || event.ctrlKey) return;
   if (event.key === 'Escape') {
     event.preventDefault();
@@ -163,6 +233,40 @@ function handleKeydown(event) {
   }
   if (handleKeyCharacter(event.key, event.isComposing)) {
     event.preventDefault();
+  }
+}
+
+function handlePassageClick(event) {
+  let target = event.target;
+  let targetIndex = null;
+  if (target?.classList.contains('is-extra') && target.dataset.targetIndex != null) {
+    targetIndex = Number(target.dataset.targetIndex);
+  } else if (target?.dataset?.index != null) {
+    targetIndex = Number(target.dataset.index);
+  } else {
+    const span = target?.closest?.('span[data-index]');
+    if (span) {
+      targetIndex = Number(span.dataset.index);
+    }
+  }
+  if (targetIndex === null && typeof document.caretRangeFromPoint === 'function') {
+    const range = document.caretRangeFromPoint(event.clientX, event.clientY);
+    const node = range?.startContainer;
+    const parent = node?.nodeType === 3 ? node.parentElement : node;
+    const span = parent?.closest?.('span[data-index]');
+    if (span && span.dataset.index != null) {
+      targetIndex = Number(span.dataset.index);
+    }
+  }
+  if (targetIndex !== null && !Number.isNaN(targetIndex)) {
+    moveToPosition(targetIndex);
+  }
+  focusTyping();
+}
+
+function handleSurfaceClick(event) {
+  if (event.target === els.typingSurface) {
+    focusTyping();
   }
 }
 

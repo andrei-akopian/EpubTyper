@@ -44,6 +44,7 @@ export function setCharacterStatus(index, status) {
 
 function ensureCursorObserver() {
   if (state.cursorObserver) return state.cursorObserver;
+  if (typeof IntersectionObserver !== 'function') return null;
   const frame = document.querySelector('.passage-frame');
   if (!frame) return null;
   state.cursorObserver = new IntersectionObserver((entries) => {
@@ -110,6 +111,7 @@ export function setExtraCharacters(index, extras) {
   extras.forEach((character) => {
     const extraSpan = document.createElement('span');
     extraSpan.className = 'is-extra is-incorrect';
+    extraSpan.dataset.targetIndex = String(index);
     extraSpan.textContent = character;
     element.parentNode.insertBefore(extraSpan, element);
   });

@@ -93,11 +93,13 @@ export function renderChapter() {
     extrasByPosition.get(index)?.forEach((extra) => {
       const extraSpan = document.createElement('span');
       extraSpan.className = 'is-extra is-incorrect';
+      extraSpan.dataset.targetIndex = String(index);
       extraSpan.textContent = extra;
       fragment.appendChild(extraSpan);
     });
     const span = document.createElement('span');
     span.textContent = character;
+    span.dataset.index = String(index);
     if (character === '\n') span.classList.add('is-newline');
     if (index === 0 || (characters[index - 1] === '\n' && character !== '\n')) span.classList.add('is-paragraph-start');
     while (emphasisRangeIndex < emphasisRanges.length && index >= emphasisRanges[emphasisRangeIndex].end) emphasisRangeIndex += 1;
@@ -108,7 +110,11 @@ export function renderChapter() {
   appendPassageImages(fragment, imagesByPosition.get(characters.length));
   els.passage.appendChild(fragment);
   advanceToFairCharacter(chapterState);
-  for (let index = 0; index < chapterState.position; index += 1) setCharacterStatus(index, chapterState.statuses[index] || 'skipped');
+  characters.forEach((_, index) => {
+    if (chapterState.statuses[index]) {
+      setCharacterStatus(index, chapterState.statuses[index]);
+    }
+  });
   moveCursor(chapterState.completed ? -1 : chapterState.position);
   els.typingHelp.classList.toggle('is-hidden', chapterState.position > 0 || chapterState.completed);
   updateSessionMetrics();
@@ -118,13 +124,22 @@ export function renderBookProgress() {
   updateBookProgress(state.book, state.bookProgressElements.get(state.book.id));
 }
 
+export function getChapterProgress(book, chapterIndex) {
+  const characters = getChapterCharacters(book, chapterIndex);
+  const chapterState = state.bookProgress[book.id]?.chapters?.[chapterIndex];
+  if (!chapterState) return 0;
+  if (chapterState.completed) return characters.length;
+  let completed = 0;
+  for (let i = 0; i < characters.length; i += 1) {
+    if (chapterState.statuses[i]) completed += 1;
+  }
+  return completed;
+}
+
 export function updateBookProgress(book, element) {
   if (!element) return;
   const total = book.chapters.reduce((sum, _, index) => sum + getChapterLength(book, index), 0);
-  const completed = book.chapters.reduce((sum, _, index) => {
-    const length = getChapterLength(book, index);
-    return sum + Math.min(state.bookProgress[book.id]?.chapters?.[index]?.position || 0, length);
-  }, 0);
+  const completed = book.chapters.reduce((sum, _, index) => sum + getChapterProgress(book, index), 0);
   element.textContent = `${total ? Math.round((completed / total) * 100) : 0}%`;
 }
 
@@ -186,12 +201,13 @@ export function updateSessionMetrics() {
   const characters = getChapterCharacters(state.book, state.currentChapter);
   const chapterState = ensureChapterState();
   const metrics = getTypingMetrics(chapterState);
-  const percent = characters.length ? (chapterState.position / characters.length) * 100 : 0;
+  const completed = getChapterProgress(state.book, state.currentChapter);
+  const percent = characters.length ? (completed / characters.length) * 100 : 0;
   els.liveWpm.textContent = metrics.emaWpm;
   els.liveAvgWpm.textContent = metrics.wpm;
   els.accuracyValue.textContent = `${metrics.accuracy}%`;
   els.timeValue.textContent = formatTime(metrics.elapsedMs);
-  els.characterCount.textContent = `${chapterState.position} / ${characters.length} characters`;
+  els.characterCount.textContent = `${completed} / ${characters.length} characters`;
   els.typingProgressFill.style.width = `${percent}%`;
   if (els.typingProgress) {
     els.typingProgress.setAttribute('aria-valuenow', String(Math.round(percent)));

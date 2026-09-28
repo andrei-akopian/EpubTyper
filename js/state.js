@@ -15,7 +15,7 @@ export const state = {
   persistId: null,
   characterElements: [],
   currentCharacter: -1,
-  charsetSet: new Set(),
+  charsetSet: new Set([...DEFAULT_SETTINGS.charset]),
   bookProgressElements: new Map(),
   toastId: null,
   fileDropDepth: 0,
@@ -31,6 +31,7 @@ export function loadState() {
     state.bookIndex = saved.bookIndex || {};
     state.history = Array.isArray(saved.history) ? saved.history : [];
     state.settings = { ...DEFAULT_SETTINGS, ...(saved.settings || {}) };
+    state.charsetSet = new Set([...state.settings.charset]);
     const sampleProgress = state.bookProgress[SAMPLE_BOOK.id];
     state.currentChapter = Math.max(0, Math.min(Number(sampleProgress?.currentChapter) || 0, SAMPLE_BOOK.chapters.length - 1));
   } catch {

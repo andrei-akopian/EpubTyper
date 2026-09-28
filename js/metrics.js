@@ -78,7 +78,7 @@ export function analyzeKeystrokes(chapterState) {
     }
     const inst = instantWpm(delay);
     if (inst) ema = ema ? WPM_EMA_ALPHA * inst + (1 - WPM_EMA_ALPHA) * ema : inst;
-    const words = Math.max(lastWords + 0.05, (Number(event.index) + 1) / CHARS_PER_WORD);
+    const words = Math.max(lastWords + 0.01, (index + 1) / CHARS_PER_WORD);
     lastWords = words;
     const minutes = typedMs / 60000;
     const accuracy = (correctKeys / totalKeys) * 100;
